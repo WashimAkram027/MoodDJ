@@ -3,6 +3,7 @@ import os
 import time
 from typing import List, Optional
 
+import requests
 import spotipy
 from spotipy.exceptions import SpotifyException
 from spotipy.oauth2 import SpotifyOAuth
@@ -14,10 +15,15 @@ load_dotenv()
 
 class SpotifyService:
     """Handles all Spotify API interactions"""
-    
+
     def __init__(self):
         self.sp = None
         self._init_spotify()
+
+        # SoundNet API configuration (fallback for audio features)
+        self.rapidapi_key = os.getenv("RAPIDAPI_KEY")
+        self.rapidapi_host = os.getenv("RAPIDAPI_HOST", "track-analysis.p.rapidapi.com")
+        self.soundnet_enabled = bool(self.rapidapi_key and self.rapidapi_key != "your_rapidapi_key_here")
 
     def _fetch_audio_features_batch(self, track_ids: List[Optional[str]]) -> List[Optional[dict]]:
         """
@@ -92,6 +98,66 @@ class SpotifyService:
                       f"First example: {failed_tracks[0]}")
 
             return features
+
+    def _fetch_audio_features_from_soundnet(self, track_id: str) -> Optional[dict]:
+        """
+        Fetch audio features from SoundNet Track Analysis API (RapidAPI)
+        This is used as a fallback when Spotify's audio_features endpoint fails
+
+        Uses the /pktx/spotify/{trackID} endpoint which accepts Spotify Track IDs directly
+
+        Args:
+            track_id: Spotify track ID (e.g., "7s25THrKz86DM225dOYwnr")
+
+        Returns:
+            dict with 'valence', 'energy', 'tempo' or None if failed
+        """
+        if not self.soundnet_enabled:
+            return None
+
+        headers = {
+            "x-rapidapi-key": self.rapidapi_key,
+            "x-rapidapi-host": self.rapidapi_host
+        }
+
+        try:
+            # Use the Spotify Track ID endpoint for accurate results
+            url = f"https://{self.rapidapi_host}/pktx/spotify/{track_id}"
+            response = requests.get(url, headers=headers, timeout=10)
+
+            if response.status_code == 200:
+                data = response.json()
+
+                # Map SoundNet fields to Spotify equivalents
+                # SoundNet returns: tempo, energy (0-100), happiness (0-100), danceability, etc.
+                features = {
+                    'valence': data.get('happiness') / 100.0 if data.get('happiness') is not None else None,  # Convert 0-100 to 0.0-1.0
+                    'energy': data.get('energy') / 100.0 if data.get('energy') is not None else None,        # Convert 0-100 to 0.0-1.0
+                    'tempo': float(data.get('tempo')) if data.get('tempo') is not None else None
+                }
+
+                # Validate all fields are present
+                if all(v is not None for v in features.values()):
+                    return features
+                else:
+                    print(f"[WARN] SoundNet returned incomplete data for track {track_id}: {features}")
+                    return None
+
+            elif response.status_code == 404:
+                print(f"[WARN] Track {track_id} not found in SoundNet database")
+                return None
+
+            elif response.status_code == 429:
+                print(f"[WARN] Rate limited by SoundNet API")
+                return None
+
+            else:
+                print(f"[WARN] SoundNet API returned status {response.status_code} for track {track_id}")
+                return None
+
+        except Exception as e:
+            print(f"[WARN] SoundNet API failed for track {track_id}: {e}")
+            return None
 
     def _init_spotify(self):
         """Initialize Spotify client"""
@@ -188,15 +254,24 @@ class SpotifyService:
                 
                 # Get audio features for all tracks at once
                 audio_features = self._fetch_audio_features_batch(track_ids)
-                
-                # Store tracks with their features
+
+                # Store tracks with their features (with SoundNet fallback)
                 for track, features in zip(track_data, audio_features):
+                    # If Spotify audio features failed, try SoundNet as fallback
+                    if not features and self.soundnet_enabled:
+                        print(f"[INFO] Spotify audio features unavailable for '{track['title']}', trying SoundNet...")
+                        features = self._fetch_audio_features_from_soundnet(track['id'])
+                        if features:
+                            print(f"[INFO] SoundNet fallback successful! (valence: {features['valence']:.3f}, energy: {features['energy']:.3f}, tempo: {features['tempo']:.1f})")
+                        else:
+                            print(f"[WARN] SoundNet fallback also failed")
+
                     query = """
                         INSERT INTO songs (spotify_song_id, title, artist, album, duration_ms, valence, energy, tempo)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                        ON DUPLICATE KEY UPDATE 
-                            valence=VALUES(valence), 
-                            energy=VALUES(energy), 
+                        ON DUPLICATE KEY UPDATE
+                            valence=VALUES(valence),
+                            energy=VALUES(energy),
                             tempo=VALUES(tempo)
                     """
                     execute_query(query, (
