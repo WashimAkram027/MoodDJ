@@ -12,10 +12,11 @@ This guide will walk you through setting up both the **backend** (Flask/Python) 
 
 ## Prerequisites
 
-Before starting, make sure you have installed:
+Before starting, make sure you have:
 - **Git** ([Download](https://git-scm.com/downloads))
 - **MySQL 8.0+** ([Download](https://dev.mysql.com/downloads/mysql/))
 - **Spotify Premium account**
+- **RapidAPI account** (free) - for audio features ([Sign up](https://rapidapi.com/))
 - **Webcam** (built-in or external)
 
 > **Note**: Python 3.10 and Node.js will be installed during the setup steps below, so you don't need to install them globally on your system.
@@ -318,9 +319,23 @@ This will:
 
 ---
 
-## Part 5: Sync Your Spotify Library
+## Part 5: Sync Your Spotify Library & Audio Features
 
 **Important**: Do this before running the main app to populate the database with songs.
+
+### Step 1: Configure RapidAPI (Audio Features Workaround)
+
+Spotify's audio features API has been deprecated. We use **SoundNet Track Analysis** as an alternative.
+
+1. Go to [RapidAPI.com](https://rapidapi.com/) and create a free account
+2. Subscribe to [Track Analysis API](https://rapidapi.com/soundnet-soundnet-default/api/track-analysis)
+3. Copy your RapidAPI key
+4. Add it to `backend/.env`:
+   ```bash
+   RAPIDAPI_KEY=your_rapidapi_key_here
+   ```
+
+### Step 2: Sync Spotify Library
 
 Still in `.../MoodDJ/backend/` with `(venv)` active:
 
@@ -331,16 +346,30 @@ python sync_spotify_library.py
 **What happens:**
 1. Asks how many tracks to sync (default: 50)
 2. Fetches your saved Spotify songs
-3. Gets audio features (valence, energy, tempo)
-4. Stores in database
+3. Attempts to get audio features from Spotify (will likely fail)
+4. **Automatically falls back to SoundNet API** for audio features
+5. Stores songs with valence, energy, tempo in database
 
 **This takes 2-5 minutes depending on number of tracks.**
 
+### Step 3: Backfill Missing Features (if needed)
+
+If your songs have NULL audio features, run the backfill script:
+
+```bash
+python backfill_audio_features.py
+# Choose option 1 to test API, then option 2 to backfill
+```
+
+This updates all songs with missing audio features using SoundNet API.
+
 ✅ Expected output:
 ```
-🎉 Sync complete! Total tracks added: 50
-📊 Total songs in database: 50
+Total songs processed: 50
+Successfully updated: 45-50
 ```
+
+> **Note**: Some very obscure/regional songs may not be found in SoundNet's database. This is normal.
 
 ---
 
@@ -620,7 +649,8 @@ MoodDJ/                              # Root project directory
 
 ### "No songs found for this mood"
 - Run the sync script: `python sync_spotify_library.py`
-- Make sure you have saved songs in your Spotify library
+- If songs still have NULL audio features, run: `python backfill_audio_features.py`
+- Make sure you have saved songs in your Spotify library and RapidAPI key is configured
 
 ### MySQL connection error
 - Check if MySQL is running
