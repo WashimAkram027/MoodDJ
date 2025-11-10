@@ -110,8 +110,8 @@ function VideoFeed() {
       <Box
         sx={{
           position: 'relative',
-          width: '100%',
-          aspectRatio: '4/3',
+          width: '50%',
+          aspectRatio: '16/9',
           bgcolor: 'background.default',
           borderRadius: 1,
           overflow: 'hidden',
@@ -125,8 +125,8 @@ function VideoFeed() {
               audio={false}
               screenshotFormat="image/jpeg"
               videoConstraints={{
-                width: 1280,
-                height: 720,
+                width: 640,
+                height: 360,
                 facingMode: 'user',
               }}
               onUserMediaError={handleUserMediaError}
