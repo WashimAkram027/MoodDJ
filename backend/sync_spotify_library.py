@@ -9,6 +9,7 @@ import mysql.connector
 from dotenv import load_dotenv
 import os
 import time
+import requests
 
 # Load environment variables
 load_dotenv()
@@ -34,6 +35,52 @@ db = mysql.connector.connect(
     database=os.getenv('DB_NAME', 'mooddj')
 )
 cursor = db.cursor()
+
+# SoundNet API setup
+RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
+RAPIDAPI_HOST = "track-analysis.p.rapidapi.com"
+
+def get_audio_features_from_soundnet(track_id):
+    """
+    Fetch audio features from SoundNet Track Analysis API
+
+    Args:
+        track_id: Spotify track ID
+
+    Returns:
+        dict with 'valence', 'energy', 'tempo' or None if failed
+    """
+    if not RAPIDAPI_KEY or RAPIDAPI_KEY == "your_rapidapi_key_here":
+        return None
+
+    headers = {
+        "x-rapidapi-key": RAPIDAPI_KEY,
+        "x-rapidapi-host": RAPIDAPI_HOST
+    }
+
+    try:
+        url = f"https://{RAPIDAPI_HOST}/pktx/spotify/{track_id}"
+        response = requests.get(url, headers=headers, timeout=15)
+
+        if response.status_code == 200:
+            data = response.json()
+
+            # Map SoundNet fields to our database format
+            features = {
+                'valence': data.get('happiness') / 100.0 if data.get('happiness') is not None else None,
+                'energy': data.get('energy') / 100.0 if data.get('energy') is not None else None,
+                'tempo': float(data.get('tempo')) if data.get('tempo') is not None else None
+            }
+
+            # Validate all fields are present
+            if all(v is not None for v in features.values()):
+                return features
+            else:
+                return None
+        else:
+            return None
+    except Exception as e:
+        return None
 
 def sync_library(limit=50):
     """Sync Spotify library to database"""
@@ -74,21 +121,19 @@ def sync_library(limit=50):
                     artist = track['artists'][0]['name'] if track['artists'] else 'Unknown'
                     album = track['album']['name']
                     duration_ms = track['duration_ms']
-                    
-                    # Get audio features (one at a time to avoid rate limits)
+
+                    # Get audio features from SoundNet API
                     print(f"  🎵 Processing: {title} by {artist}...", end=' ')
-                    features_list = sp.audio_features([track_id])
-                    
-                    if features_list and features_list[0]:
-                        features = features_list[0]
-                        
+                    features = get_audio_features_from_soundnet(track_id)
+
+                    if features:
                         # Insert into database
                         sql = """
                             INSERT INTO songs (spotify_song_id, title, artist, album, duration_ms, valence, energy, tempo)
                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                            ON DUPLICATE KEY UPDATE 
-                                valence=VALUES(valence), 
-                                energy=VALUES(energy), 
+                            ON DUPLICATE KEY UPDATE
+                                valence=VALUES(valence),
+                                energy=VALUES(energy),
                                 tempo=VALUES(tempo)
                         """
                         cursor.execute(sql, (
@@ -105,10 +150,10 @@ def sync_library(limit=50):
                         total_added += 1
                         print(f"✅ (valence: {features['valence']:.2f})")
                     else:
-                        print("⚠️  No audio features available")
-                    
+                        print("⚠️  No audio features available from SoundNet")
+
                     # Small delay to avoid rate limiting
-                    time.sleep(0.1)
+                    time.sleep(0.5)
                     
                 except Exception as track_error:
                     print(f"❌ Error: {track_error}")

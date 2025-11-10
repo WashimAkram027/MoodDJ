@@ -1,11 +1,9 @@
-import logging
 import os
 import time
-from typing import List, Optional
+from typing import Optional
 
 import requests
 import spotipy
-from spotipy.exceptions import SpotifyException
 from spotipy.oauth2 import SpotifyOAuth
 from dotenv import load_dotenv
 
@@ -20,89 +18,15 @@ class SpotifyService:
         self.sp = None
         self._init_spotify()
 
-        # SoundNet API configuration (fallback for audio features)
+        # SoundNet API configuration (primary method for audio features)
         self.rapidapi_key = os.getenv("RAPIDAPI_KEY")
         self.rapidapi_host = os.getenv("RAPIDAPI_HOST", "track-analysis.p.rapidapi.com")
         self.soundnet_enabled = bool(self.rapidapi_key and self.rapidapi_key != "your_rapidapi_key_here")
 
-    def _fetch_audio_features_batch(self, track_ids: List[Optional[str]]) -> List[Optional[dict]]:
-        """
-        Fetch audio features for a batch of track IDs.
-
-        Spotify's audio feature/analysis endpoints can return 403 if the app
-        has not been granted access yet. We treat those as recoverable so the
-        sync process can continue without aborting entirely.
-        """
-        if not track_ids:
-            return []
-
-        try:
-            return self.sp.audio_features(track_ids)
-        except SpotifyException as err:
-            if err.http_status not in (400, 403, 404, 429):
-                raise
-
-            print(f"[WARN] Bulk audio feature fetch failed ({err.http_status}). Falling back to per-track requests.")
-            spotipy_logger = logging.getLogger("spotipy.client")
-            previous_level = spotipy_logger.level
-            spotipy_logger.setLevel(logging.CRITICAL)
-
-            features: List[Optional[dict]] = []
-            denied_tracks: List[str] = []
-            missing_tracks: List[str] = []
-            failed_tracks: List[str] = []
-
-            try:
-                for track_id in track_ids:
-                    if not track_id:
-                        features.append(None)
-                        continue
-
-                    try:
-                        single = self.sp.audio_features([track_id])
-                        features.append(single[0] if single else None)
-                        continue
-                    except SpotifyException as single_err:
-                        if single_err.http_status == 429:
-                            retry_after_header = None
-                            if getattr(single_err, "headers", None):
-                                retry_after_header = single_err.headers.get("Retry-After")
-                            retry_after = int(retry_after_header or 1)
-                            print(f"[WARN] Rate limited when fetching audio features for {track_id}. Retrying in {retry_after} seconds.")
-                            time.sleep(retry_after)
-                            try:
-                                single_retry = self.sp.audio_features([track_id])
-                                features.append(single_retry[0] if single_retry else None)
-                                continue
-                            except SpotifyException as retry_err:
-                                failed_tracks.append(f"{track_id} (retry failed: {retry_err})")
-                        elif single_err.http_status == 403:
-                            denied_tracks.append(track_id)
-                        elif single_err.http_status == 404:
-                            missing_tracks.append(track_id)
-                        else:
-                            failed_tracks.append(f"{track_id} ({single_err})")
-
-                    features.append(None)
-            finally:
-                spotipy_logger.setLevel(previous_level)
-
-            if denied_tracks:
-                print(f"[WARN] Spotify denied audio feature access for {len(denied_tracks)} track(s). "
-                      f"First example: {denied_tracks[0]}")
-            if missing_tracks:
-                print(f"[WARN] Audio features unavailable (HTTP 404) for {len(missing_tracks)} track(s). "
-                      f"First example: {missing_tracks[0]}")
-            if failed_tracks:
-                print(f"[WARN] Audio feature fetch failed for {len(failed_tracks)} track(s). "
-                      f"First example: {failed_tracks[0]}")
-
-            return features
-
     def _fetch_audio_features_from_soundnet(self, track_id: str) -> Optional[dict]:
         """
         Fetch audio features from SoundNet Track Analysis API (RapidAPI)
-        This is used as a fallback when Spotify's audio_features endpoint fails
+        This is the primary method for fetching audio features
 
         Uses the /pktx/spotify/{trackID} endpoint which accepts Spotify Track IDs directly
 
@@ -224,48 +148,38 @@ class SpotifyService:
             return []
     
     def fetch_and_store_user_tracks(self, limit=50):
-        """Fetch user's saved tracks and store them with audio features"""
+        """Fetch user's saved tracks and store them with audio features from SoundNet"""
         try:
             offset = 0
             total_added = 0
             tracks_with_features = 0
             tracks_without_features = 0
-            
+
             while offset < limit:
                 results = self.sp.current_user_saved_tracks(limit=min(50, limit - offset), offset=offset)
-                
+
                 if not results['items']:
                     break
-                
-                # Collect track IDs for batch audio features request
-                track_ids = []
-                track_data = []
-                
+
+                # Process each track
                 for item in results['items']:
                     track = item['track']
-                    track_data.append({
-                        'id': track['id'],
-                        'title': track['name'],
-                        'artist': track['artists'][0]['name'],
-                        'album': track['album']['name'],
-                        'duration_ms': track['duration_ms']
-                    })
-                    track_ids.append(track['id'])
-                
-                # Get audio features for all tracks at once
-                audio_features = self._fetch_audio_features_batch(track_ids)
+                    track_id = track['id']
+                    track_title = track['name']
+                    track_artist = track['artists'][0]['name']
+                    track_album = track['album']['name']
+                    track_duration = track['duration_ms']
 
-                # Store tracks with their features (with SoundNet fallback)
-                for track, features in zip(track_data, audio_features):
-                    # If Spotify audio features failed, try SoundNet as fallback
-                    if not features and self.soundnet_enabled:
-                        print(f"[INFO] Spotify audio features unavailable for '{track['title']}', trying SoundNet...")
-                        features = self._fetch_audio_features_from_soundnet(track['id'])
-                        if features:
-                            print(f"[INFO] SoundNet fallback successful! (valence: {features['valence']:.3f}, energy: {features['energy']:.3f}, tempo: {features['tempo']:.1f})")
-                        else:
-                            print(f"[WARN] SoundNet fallback also failed")
+                    # Get audio features directly from SoundNet (primary method)
+                    print(f"[INFO] Fetching audio features for '{track_title}' from SoundNet...")
+                    features = self._fetch_audio_features_from_soundnet(track_id) if self.soundnet_enabled else None
 
+                    if features:
+                        print(f"[INFO] SoundNet success! (valence: {features['valence']:.3f}, energy: {features['energy']:.3f}, tempo: {features['tempo']:.1f})")
+                    else:
+                        print(f"[WARN] SoundNet unavailable for '{track_title}'")
+
+                    # Store track in database
                     query = """
                         INSERT INTO songs (spotify_song_id, title, artist, album, duration_ms, valence, energy, tempo)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
@@ -275,11 +189,11 @@ class SpotifyService:
                             tempo=VALUES(tempo)
                     """
                     execute_query(query, (
-                        track['id'],
-                        track['title'],
-                        track['artist'],
-                        track['album'],
-                        track['duration_ms'],
+                        track_id,
+                        track_title,
+                        track_artist,
+                        track_album,
+                        track_duration,
                         features['valence'] if features else None,
                         features['energy'] if features else None,
                         features['tempo'] if features else None
@@ -290,11 +204,12 @@ class SpotifyService:
                         tracks_with_features += 1
                     else:
                         tracks_without_features += 1
-                
+
+                    # Rate limiting delay for SoundNet API
+                    time.sleep(0.5)
+
                 offset += len(results['items'])
-                # Be polite with Spotify API to avoid throttling
-                time.sleep(0.2)
-            
+
             return {
                 'success': True,
                 'total_processed': total_added,
