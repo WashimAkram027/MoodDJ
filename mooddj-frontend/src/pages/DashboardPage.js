@@ -52,18 +52,18 @@ function DashboardPage() {
   }
 
   return (
-    <Box sx={{ 
+    <Box sx={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      py: 4 
+      py: 4
     }}>
       <Container maxWidth="xl">
         {/* Header Section */}
         <Box sx={{ mb: 4, textAlign: 'center' }}>
-          <Typography 
-            variant="h3" 
-            sx={{ 
-              color: 'white', 
+          <Typography
+            variant="h3"
+            sx={{
+              color: 'white',
               fontWeight: 700,
               mb: 1,
               textShadow: '0 2px 4px rgba(0,0,0,0.2)'
@@ -74,23 +74,23 @@ function DashboardPage() {
           <Typography variant="subtitle1" sx={{ color: 'rgba(255,255,255,0.9)', mb: 2 }}>
             Your mood, your music - personalized in real-time
           </Typography>
-          
+
           {/* Status Indicators */}
           <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Chip 
-              label={isConnected ? "✓ Connected" : "✗ Disconnected"} 
+            <Chip
+              label={isConnected ? "✓ Connected" : "✗ Disconnected"}
               color={isConnected ? "success" : "error"}
               size="small"
               sx={{ bgcolor: isConnected ? '#4caf50' : '#f44336', color: 'white', fontWeight: 600 }}
             />
-            <Chip 
-              label={cameraActive ? "✓ Camera Active" : "Camera Inactive"} 
+            <Chip
+              label={cameraActive ? "✓ Camera Active" : "Camera Inactive"}
               color={cameraActive ? "success" : "default"}
               size="small"
               sx={{ bgcolor: cameraActive ? '#4caf50' : '#757575', color: 'white', fontWeight: 600 }}
             />
-            <Chip 
-              label="✓ Spotify Connected" 
+            <Chip
+              label="✓ Spotify Connected"
               color="success"
               size="small"
               sx={{ bgcolor: '#1DB954', color: 'white', fontWeight: 600 }}
@@ -99,21 +99,21 @@ function DashboardPage() {
         </Box>
 
         {/* Help Alert */}
-        <Alert 
-          severity="info" 
+        <Alert
+          severity="info"
           sx={{ mb: 3, borderRadius: 2, fontSize: '0.95rem' }}
         >
-          <strong>Getting Started:</strong> Click "Start Detection" in the video feed below. 
+          <strong>Getting Started:</strong> Click "Start Detection" in the video feed below.
           Make sure Spotify is open and playing on your device for the best experience.
         </Alert>
 
         <Grid container spacing={3}>
           {/* Video Feed - Left Column */}
           <Grid item xs={12} lg={6}>
-            <Paper 
-              elevation={8} 
-              sx={{ 
-                p: 3, 
+            <Paper
+              elevation={8}
+              sx={{
+                p: 3,
                 height: '100%',
                 borderRadius: 3,
                 background: 'linear-gradient(to bottom, #ffffff, #f8f9fa)',
@@ -142,9 +142,9 @@ function DashboardPage() {
             <Grid container spacing={3}>
               {/* Mood Display */}
               <Grid item xs={12}>
-                <Paper 
-                  elevation={8} 
-                  sx={{ 
+                <Paper
+                  elevation={8}
+                  sx={{
                     p: 3,
                     borderRadius: 3,
                     background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
@@ -170,9 +170,9 @@ function DashboardPage() {
 
               {/* Music Player */}
               <Grid item xs={12}>
-                <Paper 
-                  elevation={8} 
-                  sx={{ 
+                <Paper
+                  elevation={8}
+                  sx={{
                     p: 3,
                     borderRadius: 3,
                     background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
@@ -200,9 +200,9 @@ function DashboardPage() {
 
           {/* Analytics - Full Width Bottom */}
           <Grid item xs={12}>
-            <Paper 
-              elevation={8} 
-              sx={{ 
+            <Paper
+              elevation={8}
+              sx={{
                 p: 3,
                 borderRadius: 3,
                 background: 'linear-gradient(to right, #ffffff, #f0f4f8)',

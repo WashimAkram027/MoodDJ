@@ -199,7 +199,7 @@ function HomePage() {
             ))}
           </Grid>
 
-          {/* CTA Button */}
+          {/* CTA Button with OAuth */}
           <Button
             variant="contained"
             size="large"
