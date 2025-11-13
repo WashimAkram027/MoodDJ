@@ -2,6 +2,10 @@
 .venv/
 __pycache__/
 *.pyc
+flask_session/
+
+.cache/
+.spotify_cache/
 
 # Node/Frontend
 node_modules/
@@ -9,6 +13,7 @@ dist/
 build/
 
 # Environment files
+
 #.env
 #.env.*
 #.env*.local
@@ -31,6 +36,7 @@ Thumbs.db
 /build
 
 # misc
+.env.example/
 .DS_Store
 .env.local
 .env.development.local

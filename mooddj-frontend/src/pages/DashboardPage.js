@@ -1,15 +1,55 @@
-import React, { useState } from 'react';
-import { Container, Grid, Paper, Typography, Box, Chip, Alert } from '@mui/material';
+import React, { useState, useEffect, useContext } from 'react';
+import { Container, Grid, Paper, Typography, Box, Chip, Alert, CircularProgress } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import { Videocam, MusicNote, Analytics as AnalyticsIcon, Mood } from '@mui/icons-material';
 import VideoFeed from '../components/VideoFeed/VideoFeed';
 import MoodDisplay from '../components/MoodDisplay/MoodDisplay';
 import MusicPlayer from '../components/MusicPlayer/MusicPlayer';
 import Analytics from '../components/Analytics/Analytics';
+import { AuthContext } from '../App';
 
 function DashboardPage() {
+  const navigate = useNavigate();
+  const { isAuthenticated, user, authLoading } = useContext(AuthContext);
+
   // You can connect these to your actual state management (Zustand)
   const [isConnected, setIsConnected] = useState(true);
   const [cameraActive, setCameraActive] = useState(false);
+
+  // Check authentication and redirect if not logged in
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      console.log('User not authenticated, redirecting to home...');
+      navigate('/');
+    }
+  }, [isAuthenticated, authLoading, navigate]);
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        }}
+      >
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress size={60} sx={{ color: 'white', mb: 2 }} />
+          <Typography variant="h6" sx={{ color: 'white' }}>
+            Loading...
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
+
+  // Don't render dashboard if not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <Box sx={{ 

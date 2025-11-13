@@ -1,6 +1,14 @@
 """
-Manual script to sync Spotify library to database
-Run this directly to populate your database with songs
+Unified Spotify Library Sync Script
+Syncs Spotify tracks AND audio features in ONE pass
+
+This script:
+1. Fetches track metadata from Spotify
+2. Immediately fetches audio features from RapidAPI SoundNet
+3. Stores complete records in database
+
+Usage:
+    python sync_spotify_library.py
 """
 
 import spotipy
@@ -9,11 +17,17 @@ import mysql.connector
 from dotenv import load_dotenv
 import os
 import time
+import sys
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from services.audio_features_service import AudioFeaturesService
 
 # Load environment variables
 load_dotenv()
 
-# Spotify setup
+# Initialize services
 print("🎵 Initializing Spotify connection...")
 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
     client_id=os.getenv("SPOTIFY_CLIENT_ID"),
@@ -23,6 +37,17 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
     open_browser=True,
     cache_path=".spotify_cache"
 ))
+
+print("🎛️  Initializing Audio Features Service...")
+audio_service = AudioFeaturesService()
+if not audio_service.is_enabled():
+    print("⚠️  WARNING: RapidAPI key not configured!")
+    print("   Audio features will NOT be fetched.")
+    print("   Add RAPIDAPI_KEY to .env to enable audio features.")
+    proceed = input("\nContinue anyway? (y/n): ").strip().lower()
+    if proceed != 'y':
+        print("❌ Sync aborted")
+        sys.exit(1)
 
 # Database setup
 print("💾 Connecting to database...")
@@ -36,9 +61,17 @@ db = mysql.connector.connect(
 cursor = db.cursor()
 
 def sync_library(limit=50):
-    """Sync Spotify library to database"""
-    print(f"\n🔄 Starting sync (limit: {limit} tracks)...")
-    
+    """
+    Unified sync: Fetch Spotify tracks AND audio features in ONE pass
+
+    Flow:
+    1. Get track metadata from Spotify
+    2. Immediately fetch audio features from RapidAPI SoundNet
+    3. Store complete record with all data
+    """
+    print(f"\n🔄 Starting unified sync (limit: {limit} tracks)...")
+    print("="*70)
+
     # Verify authentication
     try:
         user = sp.current_user()
@@ -47,26 +80,31 @@ def sync_library(limit=50):
         print(f"❌ Authentication failed: {e}")
         print("\n💡 Delete .spotify_cache and try again")
         return
-    
+
     offset = 0
-    total_added = 0
+    total_processed = 0
+    tracks_with_features = 0
+    tracks_without_features = 0
     batch_size = 20  # Process 20 at a time
-    
+
     while offset < limit:
         try:
-            # Fetch user's saved tracks
-            print(f"\n📥 Fetching tracks {offset} to {offset + batch_size}...")
+            # Fetch user's saved tracks from Spotify
+            print(f"\n📥 Fetching tracks {offset + 1} to {offset + batch_size}...")
             results = sp.current_user_saved_tracks(
                 limit=min(batch_size, limit - offset),
                 offset=offset
             )
-            
+
             if not results['items']:
                 print("✅ No more tracks to fetch")
                 break
-            
-            # Process each track
-            for item in results['items']:
+
+            print(f"   Retrieved {len(results['items'])} tracks from Spotify")
+            print("-"*70)
+
+            # Process each track: Get metadata + audio features together
+            for idx, item in enumerate(results['items'], 1):
                 try:
                     track = item['track']
                     track_id = track['id']
@@ -74,23 +112,30 @@ def sync_library(limit=50):
                     artist = track['artists'][0]['name'] if track['artists'] else 'Unknown'
                     album = track['album']['name']
                     duration_ms = track['duration_ms']
-                    
-                    # Get audio features (one at a time to avoid rate limits)
-                    print(f"  🎵 Processing: {title} by {artist}...", end=' ')
-                    features_list = sp.audio_features([track_id])
-                    
-                    if features_list and features_list[0]:
-                        features = features_list[0]
-                        
-                        # Insert into database
-                        sql = """
-                            INSERT INTO songs (spotify_song_id, title, artist, album, duration_ms, valence, energy, tempo)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                            ON DUPLICATE KEY UPDATE 
-                                valence=VALUES(valence), 
-                                energy=VALUES(energy), 
-                                tempo=VALUES(tempo)
-                        """
+
+                    print(f"\n[{offset + idx}] 🎵 {title} by {artist}")
+                    print(f"    Track ID: {track_id}")
+                    print(f"    Fetching audio features from RapidAPI...", end=' ')
+
+                    # Fetch audio features from RapidAPI SoundNet (NOT Spotify)
+                    features = audio_service.get_audio_features(track_id)
+
+                    # Prepare database insert
+                    sql = """
+                        INSERT INTO songs (spotify_song_id, title, artist, album, duration_ms, valence, energy, tempo)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        ON DUPLICATE KEY UPDATE
+                            title=VALUES(title),
+                            artist=VALUES(artist),
+                            album=VALUES(album),
+                            duration_ms=VALUES(duration_ms),
+                            valence=VALUES(valence),
+                            energy=VALUES(energy),
+                            tempo=VALUES(tempo)
+                    """
+
+                    if features:
+                        # Store with complete audio features
                         cursor.execute(sql, (
                             track_id,
                             title,
@@ -102,24 +147,45 @@ def sync_library(limit=50):
                             features['tempo']
                         ))
                         db.commit()
-                        total_added += 1
-                        print(f"✅ (valence: {features['valence']:.2f})")
+                        tracks_with_features += 1
+                        print(f"✅")
+                        print(f"    valence: {features['valence']:.3f}, energy: {features['energy']:.3f}, tempo: {features['tempo']:.1f}")
                     else:
-                        print("⚠️  No audio features available")
-                    
-                    # Small delay to avoid rate limiting
-                    time.sleep(0.1)
-                    
+                        # Store track metadata only (features will be NULL)
+                        cursor.execute(sql, (
+                            track_id,
+                            title,
+                            artist,
+                            album,
+                            duration_ms,
+                            None,  # valence
+                            None,  # energy
+                            None   # tempo
+                        ))
+                        db.commit()
+                        tracks_without_features += 1
+                        print(f"⚠️  No audio features available")
+
+                    total_processed += 1
+
+                    # Rate limiting delay (1 second between RapidAPI calls)
+                    if idx < len(results['items']):
+                        time.sleep(1.0)
+
                 except Exception as track_error:
-                    print(f"❌ Error: {track_error}")
+                    print(f"    ❌ Error: {track_error}")
                     continue
-            
+
             offset += len(results['items'])
-            print(f"\n✅ Progress: {total_added}/{offset} tracks added")
-            
+            print("\n" + "-"*70)
+            print(f"📊 Progress: {total_processed} tracks processed")
+            print(f"   ✅ With features: {tracks_with_features}")
+            print(f"   ⚠️  Without features: {tracks_without_features}")
+            print(f"   Success rate: {(tracks_with_features/total_processed*100):.1f}%")
+
             # Delay between batches
-            time.sleep(1)
-            
+            time.sleep(2)
+
         except Exception as e:
             print(f"\n❌ Batch error: {e}")
             if "429" in str(e):
@@ -127,18 +193,34 @@ def sync_library(limit=50):
                 time.sleep(30)
             else:
                 break
-    
-    print(f"\n🎉 Sync complete! Total tracks added: {total_added}")
-    
-    # Show summary
+
+    # Final summary
+    print("\n" + "="*70)
+    print("🎉 SYNC COMPLETE!")
+    print("="*70)
+    print(f"Total tracks processed: {total_processed}")
+    print(f"  ✅ With audio features: {tracks_with_features}")
+    print(f"  ⚠️  Without features: {tracks_without_features}")
+    print(f"  Success rate: {(tracks_with_features/total_processed*100):.1f}%" if total_processed > 0 else "  Success rate: N/A")
+
+    # Database statistics
     cursor.execute("SELECT COUNT(*) FROM songs")
     total = cursor.fetchone()[0]
-    print(f"📊 Total songs in database: {total}")
-    
+    print(f"\n📊 Total songs in database: {total}")
+
     cursor.execute("""
-        SELECT mood_name, COUNT(*) as count 
+        SELECT COUNT(*) FROM songs
+        WHERE valence IS NOT NULL AND energy IS NOT NULL AND tempo IS NOT NULL
+    """)
+    complete = cursor.fetchone()[0]
+    print(f"   Complete records (with features): {complete}")
+    print(f"   Incomplete records (missing features): {total - complete}")
+
+    # Show mood distribution
+    cursor.execute("""
+        SELECT mood_name, COUNT(*) as count
         FROM moods m
-        LEFT JOIN songs s ON 
+        LEFT JOIN songs s ON
             s.valence BETWEEN m.target_valence_min AND m.target_valence_max
             AND s.energy BETWEEN m.target_energy_min AND m.target_energy_max
         GROUP BY m.mood_name

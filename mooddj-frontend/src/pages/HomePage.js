@@ -1,11 +1,12 @@
-import React from 'react';
-import { Container, Box, Typography, Button, Card, CardContent, Grid, Chip } from '@mui/material';
+import React, { useState } from 'react';
+import { Container, Box, Typography, Button, Card, CardContent, Grid, Chip, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import GraphicEqIcon from '@mui/icons-material/GraphicEq';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { keyframes } from '@mui/system';
+import { authService } from '../services/authService';
 
 // Animation for floating effect
 const float = keyframes`
@@ -22,6 +23,19 @@ const pulse = keyframes`
 
 function HomePage() {
   const navigate = useNavigate();
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  const handleConnectSpotify = async () => {
+    try {
+      setIsConnecting(true);
+      await authService.initiateSpotifyLogin();
+      // Will redirect to Spotify, so no need to setIsConnecting(false)
+    } catch (error) {
+      console.error('Failed to connect to Spotify:', error);
+      setIsConnecting(false);
+      alert('Failed to connect to Spotify. Please try again.');
+    }
+  };
 
   const features = [
     {
@@ -189,27 +203,44 @@ function HomePage() {
           <Button
             variant="contained"
             size="large"
-            onClick={() => navigate('/dashboard')}
+            onClick={handleConnectSpotify}
+            disabled={isConnecting}
             sx={{
               mt: 2,
               px: 8,
               py: 2.5,
               fontSize: '1.2rem',
               fontWeight: 600,
-              background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+              background: isConnecting
+                ? 'rgba(29, 185, 84, 0.6)'
+                : 'linear-gradient(135deg, #1DB954 0%, #1ed760 100%)',
               color: 'white',
               borderRadius: 3,
               textTransform: 'none',
-              boxShadow: '0 8px 24px rgba(240, 147, 251, 0.4)',
+              boxShadow: '0 8px 24px rgba(29, 185, 84, 0.4)',
               transition: 'all 0.3s ease',
               '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 12px 32px rgba(240, 147, 251, 0.6)',
-                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                transform: isConnecting ? 'none' : 'translateY(-4px)',
+                boxShadow: isConnecting ? '0 8px 24px rgba(29, 185, 84, 0.4)' : '0 12px 32px rgba(29, 185, 84, 0.6)',
+                background: isConnecting
+                  ? 'rgba(29, 185, 84, 0.6)'
+                  : 'linear-gradient(135deg, #1DB954 0%, #1ed760 100%)',
+              },
+              '&:disabled': {
+                color: 'white',
               },
             }}
           >
-            Get Started →
+            {isConnecting ? (
+              <>
+                <CircularProgress size={24} sx={{ color: 'white', mr: 2 }} />
+                Connecting to Spotify...
+              </>
+            ) : (
+              <>
+                🎵 Connect with Spotify →
+              </>
+            )}
           </Button>
 
           {/* Requirements Chips */}
