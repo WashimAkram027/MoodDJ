@@ -8,7 +8,7 @@ from io import BytesIO
 from PIL import Image
 
 class MoodDetector:
-    """Encapsulates mood detection logic from camera.py"""
+    """Encapsulates mood detection logic from camera.py of Pycharm"""
     
     def __init__(self):
         # MediaPipe setup
