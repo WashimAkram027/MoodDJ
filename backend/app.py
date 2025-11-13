@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import os
 import logging
 from datetime import timedelta
+import redis
 
 # Load environment variables
 load_dotenv()
@@ -16,8 +17,20 @@ app = Flask(__name__)
 # Secret key for session encryption
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
 
-# Session configuration
-app.config['SESSION_TYPE'] = 'filesystem'  # Store sessions on server
+# Session configuration - support both filesystem and Redis
+session_type = os.getenv('SESSION_TYPE', 'filesystem')
+app.config['SESSION_TYPE'] = session_type
+
+if session_type == 'redis':
+    # Production: Use Redis for session storage (required for ECS Fargate)
+    redis_url = os.getenv('SESSION_REDIS', 'redis://localhost:6379')
+    app.config['SESSION_REDIS'] = redis.from_url(redis_url)
+    logger = logging.getLogger(__name__)
+    logger.info(f"Using Redis session storage: {redis_url}")
+else:
+    # Development: Use filesystem session storage
+    app.config['SESSION_TYPE'] = 'filesystem'
+
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Sessions last 7 days
 app.config['SESSION_COOKIE_NAME'] = 'mooddj_session'
@@ -60,6 +73,12 @@ from routes.music_routes import music_bp
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(mood_bp, url_prefix='/api/mood')
 app.register_blueprint(music_bp, url_prefix='/api/music')
+
+# Health check endpoint (for ALB/ECS health checks)
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Health check endpoint for load balancer"""
+    return jsonify({'status': 'healthy', 'service': 'mooddj-backend'}), 200
 
 # WebSocket event handlers
 @socketio.on('connect')
