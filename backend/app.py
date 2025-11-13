@@ -109,14 +109,6 @@ def handle_stop_detection(data):
     logger.info('Stopping mood detection')
     emit('detection_stopped', {'status': 'stopped'})
 
-# Health check endpoint
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    return jsonify({
-        'status': 'healthy',
-        'message': 'MoodDJ Backend is running'
-    }), 200
-
 # Error handlers
 @app.errorhandler(404)
 def not_found(error):
