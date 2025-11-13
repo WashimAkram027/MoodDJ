@@ -7,8 +7,68 @@ import base64
 from io import BytesIO
 from PIL import Image
 
+
+# ------------- Landmark helpers -------------
+def dist(p, q):
+    return math.hypot(p[0] - q[0], p[1] - q[1])
+
+
+def xy(lmk, wi, hi):
+    return int(lmk.x * wi), int(lmk.y * hi)
+
+
+# Face Mesh landmark indices (MediaPipe)
+# Mouth - Enhanced landmarks for better detection
+LM_MOUTH_LEFT = 61  # Left corner
+LM_MOUTH_RIGHT = 291  # Right corner
+LM_LIP_UP = 13  # Upper lip center
+LM_LIP_DOWN = 14  # Lower lip center
+
+# Additional key mouth points for improved accuracy
+LM_MOUTH_LEFT_INNER = 78  # Left corner inner
+LM_MOUTH_RIGHT_INNER = 308  # Right corner inner
+
+# Eyes
+R_EYE_OUTER = 33
+R_EYE_INNER = 133
+R_EYE_UP = 159
+R_EYE_DOWN = 145
+
+L_EYE_OUTER = 263
+L_EYE_INNER = 362
+L_EYE_UP = 386
+L_EYE_DOWN = 374
+
+# Eyebrows - multiple points for curved lines
+# Right eyebrow (from inner to outer)
+RBROW_INNER = 70
+RBROW_MID1 = 63
+RBROW_MID2 = 105
+RBROW_MID3 = 66
+RBROW_OUTER = 107
+
+# Left eyebrow (from inner to outer)
+LBROW_INNER = 300
+LBROW_MID1 = 293
+LBROW_MID2 = 334
+LBROW_MID3 = 296
+LBROW_OUTER = 336
+
+# ------------- Smoothing -------------
+WIN = 5  # frames to smooth over
+
+# ------------- Thresholds (tune if needed) -------------
+SMILE_WIDTH_MIN = 0.56  # mouth width vs inter-ocular width
+MOUTH_OPEN_SURPRISE = 0.20  # mouth openness vs inter-ocular width
+EYE_OPEN_SURPRISE = 0.27  # average eyelid gap vs eye width
+BROW_RAISE_SURPRISE = 0.20  # eyebrow height vs eye height
+
+
 class MoodDetector:
-    """Encapsulates mood detection logic from camera.py of Pycharm"""
+    """
+    Encapsulates mood detection logic
+    Uses YOUR EXACT algorithm from the original code
+    """
     
     def __init__(self):
         # MediaPipe setup
@@ -20,45 +80,15 @@ class MoodDetector:
             min_tracking_confidence=0.5
         )
         
-        # Smoothing windows
-        self.WIN = 10
-        self.hist_smile = deque(maxlen=self.WIN)
-        self.hist_mouth_open = deque(maxlen=self.WIN)
-        self.hist_eye_open = deque(maxlen=self.WIN)
-        self.hist_brow_raise = deque(maxlen=self.WIN)
-        
-        # Thresholds
-        self.SMILE_WIDTH_MIN = 0.60
-        self.MOUTH_OPEN_SURPRISE = 0.20
-        self.EYE_OPEN_SURPRISE = 0.27
-        self.BROW_RAISE_SURPRISE = 0.20
-        
-        # Landmark indices
-        self.LM_MOUTH_LEFT = 61
-        self.LM_MOUTH_RIGHT = 291
-        self.LM_LIP_UP = 13
-        self.LM_LIP_DOWN = 14
-        self.R_EYE_OUTER = 33
-        self.R_EYE_INNER = 133
-        self.R_EYE_UP = 159
-        self.R_EYE_DOWN = 145
-        self.L_EYE_OUTER = 263
-        self.L_EYE_INNER = 362
-        self.L_EYE_UP = 386
-        self.L_EYE_DOWN = 374
-        self.RBROW = 105
-        self.LBROW = 334
-    
-    def dist(self, p, q):
-        """Calculate distance between two points"""
-        return math.hypot(p[0]-q[0], p[1]-q[1])
-    
-    def xy(self, lmk, wi, hi):
-        """Convert landmark to pixel coordinates"""
-        return int(lmk.x * wi), int(lmk.y * hi)
+        # Smoothing history queues
+        self.hist_smile = deque(maxlen=WIN)
+        self.hist_mouth_open = deque(maxlen=WIN)
+        self.hist_eye_open = deque(maxlen=WIN)
+        self.hist_brow_raise = deque(maxlen=WIN)
+        self.hist_brow_distance = deque(maxlen=WIN)
     
     def detect_from_base64(self, image_base64):
-        """Detect mood from base64 encoded image"""
+        """Detect mood from base64 encoded image (for API)"""
         try:
             # Decode base64 image
             image_data = base64.b64decode(image_base64.split(',')[1])
@@ -74,54 +104,141 @@ class MoodDetector:
             return None
     
     def detect_from_frame(self, frame):
-        """Detect mood from a frame"""
+        """
+        YOUR EXACT DETECTION ALGORITHM
+        Copied directly from your original code
+        """
         h, w = frame.shape[:2]
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.face_mesh.process(rgb)
         faces = getattr(results, "multi_face_landmarks", None)
-        
+
         mood = "neutral"
         confidence = 0.0
-        features = {}
-        
+
         if faces:
             lm = faces[0].landmark
-            
-            # Extract features
-            features = self._extract_features(lm, w, h)
-            
-            # Get smoothed features
-            s_smile = sum(self.hist_smile)/len(self.hist_smile) if self.hist_smile else 0
-            s_mopen = sum(self.hist_mouth_open)/len(self.hist_mouth_open) if self.hist_mouth_open else 0
-            s_eopen = sum(self.hist_eye_open)/len(self.hist_eye_open) if self.hist_eye_open else 0
-            s_brow = sum(self.hist_brow_raise)/len(self.hist_brow_raise) if self.hist_brow_raise else 0
-            
-            # Mood detection logic
-            if ((s_mopen > self.MOUTH_OPEN_SURPRISE and
-                 s_eopen > self.EYE_OPEN_SURPRISE and
-                 s_brow > self.BROW_RAISE_SURPRISE) or
+
+            # --- Key points (pixels) ---
+            # Main mouth points
+            p_ml = xy(lm[LM_MOUTH_LEFT], w, h)
+            p_mr = xy(lm[LM_MOUTH_RIGHT], w, h)
+            p_mu = xy(lm[LM_LIP_UP], w, h)
+            p_md = xy(lm[LM_LIP_DOWN], w, h)
+
+            # Additional inner corner points for better accuracy
+            p_ml_inner = xy(lm[LM_MOUTH_LEFT_INNER], w, h)
+            p_mr_inner = xy(lm[LM_MOUTH_RIGHT_INNER], w, h)
+
+            p_re_outer = xy(lm[R_EYE_OUTER], w, h)
+            p_re_inner = xy(lm[R_EYE_INNER], w, h)
+            p_re_up = xy(lm[R_EYE_UP], w, h)
+            p_re_down = xy(lm[R_EYE_DOWN], w, h)
+
+            p_le_outer = xy(lm[L_EYE_OUTER], w, h)
+            p_le_inner = xy(lm[L_EYE_INNER], w, h)
+            p_le_up = xy(lm[L_EYE_UP], w, h)
+            p_le_down = xy(lm[L_EYE_DOWN], w, h)
+
+            p_rbrow_inner = xy(lm[RBROW_INNER], w, h)
+            p_rbrow_mid1 = xy(lm[RBROW_MID1], w, h)
+            p_rbrow_mid2 = xy(lm[RBROW_MID2], w, h)
+            p_rbrow_mid3 = xy(lm[RBROW_MID3], w, h)
+            p_rbrow_outer = xy(lm[RBROW_OUTER], w, h)
+
+            p_lbrow_inner = xy(lm[LBROW_INNER], w, h)
+            p_lbrow_mid1 = xy(lm[LBROW_MID1], w, h)
+            p_lbrow_mid2 = xy(lm[LBROW_MID2], w, h)
+            p_lbrow_mid3 = xy(lm[LBROW_MID3], w, h)
+            p_lbrow_outer = xy(lm[LBROW_OUTER], w, h)
+
+            # --- Base scales ---
+            inter_ocular = dist(p_re_outer, p_le_outer) + 1e-6
+            re_width = dist(p_re_outer, p_re_inner) + 1e-6
+            le_width = dist(p_le_outer, p_le_inner) + 1e-6
+            eye_width_avg = (re_width + le_width) / 2.0
+
+            # --- Features ---
+            # Enhanced mouth width - average of outer and inner corners
+            mouth_width_outer = dist(p_ml, p_mr) / inter_ocular
+            mouth_width_inner = dist(p_ml_inner, p_mr_inner) / inter_ocular
+            mouth_width = (mouth_width_outer + mouth_width_inner) / 2.0
+
+            # Mouth openness
+            mouth_open = dist(p_mu, p_md) / inter_ocular
+
+            re_open = dist(p_re_up, p_re_down) / re_width
+            le_open = dist(p_le_up, p_le_down) / le_width
+            eye_open = (re_open + le_open) / 2.0
+
+            # Eyebrow height (using middle points)
+            re_center = ((p_re_outer[0] + p_re_inner[0]) // 2, (p_re_outer[1] + p_re_inner[1]) // 2)
+            le_center = ((p_le_outer[0] + p_le_inner[0]) // 2, (p_le_outer[1] + p_le_inner[1]) // 2)
+            rbrow_raise = abs(p_rbrow_mid2[1] - re_center[1]) / inter_ocular
+            lbrow_raise = abs(p_lbrow_mid2[1] - le_center[1]) / inter_ocular
+            brow_raise = (rbrow_raise + lbrow_raise) / 2.0
+
+            # Brow closeness (using inner points)
+            brow_distance = dist(p_rbrow_inner, p_lbrow_inner) / inter_ocular
+
+            # --- Smooth features ---
+            self.hist_smile.append(mouth_width)
+            self.hist_mouth_open.append(mouth_open)
+            self.hist_eye_open.append(eye_open)
+            self.hist_brow_raise.append(brow_raise)
+            self.hist_brow_distance.append(brow_distance)
+
+            s_smile = sum(self.hist_smile) / len(self.hist_smile)
+            s_mopen = sum(self.hist_mouth_open) / len(self.hist_mouth_open)
+            s_eopen = sum(self.hist_eye_open) / len(self.hist_eye_open)
+            s_brow = sum(self.hist_brow_raise) / len(self.hist_brow_raise)
+            s_brow_dist = sum(self.hist_brow_distance) / len(self.hist_brow_distance)
+
+            # --- Mood rules ---
+            # SURPRISED: either full surprise or eyebrow-only
+            if ((s_mopen > MOUTH_OPEN_SURPRISE and
+                 s_eopen > EYE_OPEN_SURPRISE and
+                 s_brow > BROW_RAISE_SURPRISE) or
                     (s_brow > 0.30)):
                 mood = "surprised"
-                confidence = min(s_brow / 0.30, 1.0)
-            elif s_smile > self.SMILE_WIDTH_MIN:
+
+            # HAPPY: wide mouth (smile)
+            elif s_smile > SMILE_WIDTH_MIN:
                 mood = "happy"
-                confidence = min(s_smile / self.SMILE_WIDTH_MIN, 1.0)
+
             else:
-                # Calculate brow distance for anger detection
-                p_rbrow = self.xy(lm[self.RBROW], w, h)
-                p_lbrow = self.xy(lm[self.LBROW], w, h)
-                inter_ocular = features.get('inter_ocular', 1)
-                brow_distance = self.dist(p_rbrow, p_lbrow) / inter_ocular
-                
-                if s_brow < 0.18 and brow_distance < 0.36:
+                # ANGRY: Requires ALL conditions to be met
+                # Eye squinting + neutral mouth + lowered eyebrows
+                eyes_squinting = s_eopen < 0.23  # Eyes narrowed/squinting (adjusted for glasses)
+                mouth_neutral = s_smile < 0.55 and s_mopen < 0.15  # Not smiling, not wide open
+                brows_lowered = s_brow < 0.24  # Eyebrows lowered below neutral
+
+                # Anger if: ALL THREE conditions are met
+                if eyes_squinting and mouth_neutral and brows_lowered:
                     mood = "angry"
-                    confidence = 1.0 - (brow_distance / 0.36)
+
+                # SAD: mouth not wide + lips not open
                 elif s_smile < 0.42 and s_mopen < 0.14:
                     mood = "sad"
-                    confidence = 1.0 - (s_smile / 0.42)
+
                 else:
                     mood = "neutral"
-                    confidence = 0.7
+            
+            # Confidence always 1.0 (frontend expects this field)
+            confidence = 1.0
+
+            # Store features for API response
+            features = {
+                'inter_ocular': inter_ocular,
+                'mouth_width': round(s_smile, 3),
+                'mouth_open': round(s_mopen, 3),
+                'eye_open': round(s_eopen, 3),
+                'brow_raise': round(s_brow, 3),
+                'brow_distance': round(s_brow_dist, 3)
+            }
+        
+        else:
+            features = {}
         
         return {
             'mood': mood,
@@ -130,59 +247,10 @@ class MoodDetector:
             'detected': faces is not None
         }
     
-    def _extract_features(self, lm, w, h):
-        """Extract facial features from landmarks"""
-        # Get key points
-        p_ml = self.xy(lm[self.LM_MOUTH_LEFT], w, h)
-        p_mr = self.xy(lm[self.LM_MOUTH_RIGHT], w, h)
-        p_mu = self.xy(lm[self.LM_LIP_UP], w, h)
-        p_md = self.xy(lm[self.LM_LIP_DOWN], w, h)
-        
-        p_re_outer = self.xy(lm[self.R_EYE_OUTER], w, h)
-        p_re_inner = self.xy(lm[self.R_EYE_INNER], w, h)
-        p_re_up = self.xy(lm[self.R_EYE_UP], w, h)
-        p_re_down = self.xy(lm[self.R_EYE_DOWN], w, h)
-        
-        p_le_outer = self.xy(lm[self.L_EYE_OUTER], w, h)
-        p_le_inner = self.xy(lm[self.L_EYE_INNER], w, h)
-        p_le_up = self.xy(lm[self.L_EYE_UP], w, h)
-        p_le_down = self.xy(lm[self.L_EYE_DOWN], w, h)
-        
-        # Calculate features
-        inter_ocular = self.dist(p_re_outer, p_le_outer) + 1e-6
-        mouth_width = self.dist(p_ml, p_mr) / inter_ocular
-        mouth_open = self.dist(p_mu, p_md) / inter_ocular
-        
-        re_width = self.dist(p_re_outer, p_re_inner) + 1e-6
-        le_width = self.dist(p_le_outer, p_le_inner) + 1e-6
-        re_open = self.dist(p_re_up, p_re_down) / re_width
-        le_open = self.dist(p_le_up, p_le_down) / le_width
-        eye_open = (re_open + le_open) / 2.0
-        
-        # Eyebrow height
-        re_center = ((p_re_outer[0]+p_re_inner[0])//2, (p_re_outer[1]+p_re_inner[1])//2)
-        le_center = ((p_le_outer[0]+p_le_inner[0])//2, (p_le_outer[1]+p_le_inner[1])//2)
-        rbrow_raise = abs(self.xy(lm[self.RBROW], w, h)[1] - re_center[1]) / inter_ocular
-        lbrow_raise = abs(self.xy(lm[self.LBROW], w, h)[1] - le_center[1]) / inter_ocular
-        brow_raise = (rbrow_raise + lbrow_raise) / 2.0
-        
-        # Update history
-        self.hist_smile.append(mouth_width)
-        self.hist_mouth_open.append(mouth_open)
-        self.hist_eye_open.append(eye_open)
-        self.hist_brow_raise.append(brow_raise)
-        
-        return {
-            'inter_ocular': inter_ocular,
-            'mouth_width': round(mouth_width, 3),
-            'mouth_open': round(mouth_open, 3),
-            'eye_open': round(eye_open, 3),
-            'brow_raise': round(brow_raise, 3)
-        }
-    
     def reset(self):
         """Reset mood detection history"""
         self.hist_smile.clear()
         self.hist_mouth_open.clear()
         self.hist_eye_open.clear()
         self.hist_brow_raise.clear()
+        self.hist_brow_distance.clear()
