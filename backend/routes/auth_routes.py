@@ -46,7 +46,7 @@ def callback():
 
         if error:
             print(f"[ERROR] OAuth error: {error}")
-            frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+            frontend_url = os.getenv('FRONTEND_URL', 'http://127.0.0.1:3000')
             return redirect(f"{frontend_url}/?error=auth_failed")
 
         if not code:
@@ -59,12 +59,13 @@ def callback():
         token_info = spotify_service.exchange_code_for_token(code)
 
         if not token_info:
-            frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+            frontend_url = os.getenv('FRONTEND_URL', 'http://127.0.0.1:3000')
             return redirect(f"{frontend_url}/?error=token_exchange_failed")
 
         # Store token in session
         session.permanent = True  # Make session last beyond browser close
         session['spotify_token_info'] = token_info
+        print(f"[DEBUG] Session after storing token: {dict(session)}")
 
         # Get user profile and store in session
         sp_client = spotify_service.create_spotify_client(token_info)
@@ -91,13 +92,13 @@ def callback():
                 except Exception as db_error:
                     print(f"[WARN] Failed to store user in database: {db_error}")
 
-        # Redirect to frontend dashboard
-        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+        # Redirect to frontend dashboard (use 127.0.0.1 to match cookie domain)
+        frontend_url = os.getenv('FRONTEND_URL', 'http://127.0.0.1:3000')
         return redirect(f"{frontend_url}/dashboard")
 
     except Exception as e:
         print(f"[ERROR] OAuth callback error: {e}")
-        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+        frontend_url = os.getenv('FRONTEND_URL', 'http://127.0.0.1:3000')
         return redirect(f"{frontend_url}/?error=auth_error")
 
 
@@ -128,8 +129,10 @@ def status():
     Returns whether user is authenticated and their profile info
     """
     try:
+        print(f"[DEBUG] Status check - Session contents: {dict(session)}")
         token_info = session.get('spotify_token_info')
         user_id = session.get('user_id')
+        print(f"[DEBUG] token_info exists: {token_info is not None}, user_id: {user_id}")
 
         if not token_info or not user_id:
             return jsonify({

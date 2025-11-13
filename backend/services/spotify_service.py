@@ -66,11 +66,20 @@ class SpotifyService:
             dict: Token information containing access_token, refresh_token, expires_at
         """
         try:
+            print(f"[INFO] Exchanging auth code for token...")
+            print(f"[INFO] Using redirect_uri: {self.redirect_uri}")
+            print(f"[INFO] Using client_id: {self.client_id[:8]}...")
+
             oauth = self.get_oauth_manager()
             token_info = oauth.get_access_token(code, as_dict=True, check_cache=False)
+
+            print(f"[INFO] Token exchange successful!")
             return token_info
         except Exception as e:
             print(f"[ERROR] Failed to exchange code for token: {e}")
+            print(f"[ERROR] Error type: {type(e).__name__}")
+            import traceback
+            print(f"[ERROR] Traceback: {traceback.format_exc()}")
             return None
 
     def refresh_access_token(self, refresh_token: str):
