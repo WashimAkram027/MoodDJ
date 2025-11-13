@@ -19,10 +19,10 @@ function VideoFeed() {
     let intervalId;
 
     if (isActive && isDetecting) {
-      // Capture and process frame every 2 seconds
+      // Capture and process frame every 5 seconds
       intervalId = setInterval(async () => {
         await captureAndDetectMood();
-      }, 2000);
+      }, 5000);
     }
 
     return () => {
@@ -110,8 +110,8 @@ function VideoFeed() {
       <Box
         sx={{
           position: 'relative',
-          width: '100%',
-          aspectRatio: '4/3',
+          width: '50%',
+          aspectRatio: '16/9',
           bgcolor: 'background.default',
           borderRadius: 1,
           overflow: 'hidden',
@@ -125,8 +125,8 @@ function VideoFeed() {
               audio={false}
               screenshotFormat="image/jpeg"
               videoConstraints={{
-                width: 1280,
-                height: 720,
+                width: 640,
+                height: 360,
                 facingMode: 'user',
               }}
               onUserMediaError={handleUserMediaError}
@@ -194,7 +194,7 @@ function VideoFeed() {
       </Box>
 
       <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-        {isDetecting ? '🟢 Detecting mood every 2 seconds...' : 'Your video is processed locally and never stored'}
+        {isDetecting ? '🟢 Detecting mood every 5 seconds...' : 'Your video is processed locally and never stored'}
       </Typography>
     </Box>
   );

@@ -2,6 +2,18 @@
 .venv/
 __pycache__/
 *.pyc
+flask_session/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Spotify/Cache files
+.cache
+.cache/
+*.cache
+.spotify_cache
+.spotify_cache/
 
 # Node/Frontend
 node_modules/
@@ -9,9 +21,14 @@ dist/
 build/
 
 # Environment files
-#.env
-#.env.*
-#.env*.local
+.env
+.env.*
+.env*.local
+!.env.example
+
+# Documentation (except README)
+*.md
+!README.md
 
 # OS-specific files
 .DS_Store
@@ -31,6 +48,7 @@ Thumbs.db
 /build
 
 # misc
+.env.example/
 .DS_Store
 .env.local
 .env.development.local

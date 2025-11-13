@@ -56,10 +56,6 @@ function MoodDisplay() {
 
   return (
     <Box>
-      <Typography variant="h6" gutterBottom>
-        Current Mood
-      </Typography>
-
       <Box
         sx={{
           display: 'flex',
