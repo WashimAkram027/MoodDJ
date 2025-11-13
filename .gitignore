@@ -3,8 +3,16 @@
 __pycache__/
 *.pyc
 flask_session/
+*.py[cod]
+*$py.class
+*.so
+.Python
 
+# Spotify/Cache files
+.cache
 .cache/
+*.cache
+.spotify_cache
 .spotify_cache/
 
 # Node/Frontend
@@ -13,10 +21,14 @@ dist/
 build/
 
 # Environment files
+.env
+.env.*
+.env*.local
+!.env.example
 
-#.env
-#.env.*
-#.env*.local
+# Documentation (except README)
+*.md
+!README.md
 
 # OS-specific files
 .DS_Store
