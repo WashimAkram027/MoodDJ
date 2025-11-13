@@ -39,26 +39,26 @@ function HomePage() {
 
   const features = [
     {
-      icon: <CameraAltIcon sx={{ fontSize: 40, color: '#667eea' }} />,
+      icon: <CameraAltIcon sx={{ fontSize: 32, color: '#667eea' }} />,
       title: 'Real-Time Detection',
-      description: 'AI analyzes your facial expressions every 2 seconds'
+      description: 'AI analyzes your expressions'
     },
     {
-      icon: <GraphicEqIcon sx={{ fontSize: 40, color: '#1DB954' }} />,
+      icon: <GraphicEqIcon sx={{ fontSize: 32, color: '#1DB954' }} />,
       title: 'Smart Matching',
-      description: 'Automatically plays music that matches your mood'
+      description: 'Music that matches your mood'
     },
     {
-      icon: <AutoAwesomeIcon sx={{ fontSize: 40, color: '#f093fb' }} />,
+      icon: <AutoAwesomeIcon sx={{ fontSize: 32, color: '#f093fb' }} />,
       title: 'Mood Analytics',
-      description: 'Track your emotional patterns over time'
+      description: 'Track emotional patterns'
     }
   ];
 
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        height: '100vh',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         position: 'relative',
         overflow: 'hidden',
@@ -70,8 +70,8 @@ function HomePage() {
           position: 'absolute',
           top: '10%',
           left: '5%',
-          width: 100,
-          height: 100,
+          width: 80,
+          height: 80,
           borderRadius: '50%',
           background: 'rgba(255, 255, 255, 0.1)',
           animation: `${float} 6s ease-in-out infinite`,
@@ -82,43 +82,43 @@ function HomePage() {
           position: 'absolute',
           bottom: '15%',
           right: '10%',
-          width: 150,
-          height: 150,
+          width: 120,
+          height: 120,
           borderRadius: '50%',
           background: 'rgba(255, 255, 255, 0.1)',
           animation: `${float} 8s ease-in-out infinite`,
         }}
       />
 
-      <Container maxWidth="lg">
+      <Container maxWidth="lg" sx={{ height: '100%' }}>
         <Box
           sx={{
-            minHeight: '100vh',
+            height: '100%',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
             alignItems: 'center',
             textAlign: 'center',
-            py: 4,
+            py: 3,
           }}
         >
           {/* Hero Section */}
-          <Box sx={{ mb: 6, animation: `${pulse} 3s ease-in-out infinite` }}>
+          <Box sx={{ mb: 2, animation: `${pulse} 3s ease-in-out infinite` }}>
             <Box
               sx={{
                 background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
                 borderRadius: '50%',
-                width: 120,
-                height: 120,
+                width: 80,
+                height: 80,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto',
-                mb: 3,
+                mb: 2,
                 boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
               }}
             >
-              <MusicNoteIcon sx={{ fontSize: 60, color: '#fff' }} />
+              <MusicNoteIcon sx={{ fontSize: 40, color: '#fff' }} />
             </Box>
           </Box>
 
@@ -129,9 +129,9 @@ function HomePage() {
             sx={{
               color: 'white',
               fontWeight: 800,
-              fontSize: { xs: '3rem', md: '4.5rem' },
+              fontSize: { xs: '2.5rem', md: '3.5rem' },
               textShadow: '0 4px 12px rgba(0,0,0,0.3)',
-              mb: 2,
+              mb: 1,
             }}
           >
             🎵 MoodDJ
@@ -142,8 +142,8 @@ function HomePage() {
             sx={{
               color: 'rgba(255, 255, 255, 0.95)',
               fontWeight: 500,
-              mb: 2,
-              fontSize: { xs: '1.5rem', md: '2rem' },
+              mb: 1.5,
+              fontSize: { xs: '1.25rem', md: '1.75rem' },
             }}
           >
             Your Mood, Your Music
@@ -153,19 +153,18 @@ function HomePage() {
             variant="h6"
             sx={{
               color: 'rgba(255, 255, 255, 0.85)',
-              maxWidth: 700,
-              mb: 4,
-              lineHeight: 1.6,
+              maxWidth: 600,
+              mb: 3,
+              lineHeight: 1.5,
               px: 2,
-              fontSize: { xs: '1rem', md: '1.25rem' },
+              fontSize: { xs: '0.9rem', md: '1rem' },
             }}
           >
-            Experience the future of personalized music. Let AI detect your emotions
-            through your camera and automatically curate the perfect soundtrack for your mood.
+            Let AI detect your emotions and automatically curate the perfect soundtrack for your mood.
           </Typography>
 
           {/* Feature Cards */}
-          <Grid container spacing={3} sx={{ mb: 5, maxWidth: 900 }}>
+          <Grid container spacing={2} sx={{ mb: 3, maxWidth: 800 }}>
             {features.map((feature, index) => (
               <Grid item xs={12} md={4} key={index}>
                 <Card
@@ -173,24 +172,24 @@ function HomePage() {
                     height: '100%',
                     background: 'rgba(255, 255, 255, 0.95)',
                     backdropFilter: 'blur(10px)',
-                    borderRadius: 3,
+                    borderRadius: 2,
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      transform: 'translateY(-8px)',
-                      boxShadow: '0 12px 24px rgba(0,0,0,0.2)',
+                      transform: 'translateY(-4px)',
+                      boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
                     },
                   }}
                 >
-                  <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                    <Box sx={{ mb: 2 }}>{feature.icon}</Box>
+                  <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                    <Box sx={{ mb: 1 }}>{feature.icon}</Box>
                     <Typography
-                      variant="h6"
+                      variant="subtitle1"
                       gutterBottom
-                      sx={{ fontWeight: 600, color: '#2d3748' }}
+                      sx={{ fontWeight: 600, color: '#2d3748', fontSize: '0.95rem' }}
                     >
                       {feature.title}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
                       {feature.description}
                     </Typography>
                   </CardContent>
@@ -206,10 +205,10 @@ function HomePage() {
             onClick={handleConnectSpotify}
             disabled={isConnecting}
             sx={{
-              mt: 2,
-              px: 8,
-              py: 2.5,
-              fontSize: '1.2rem',
+              mt: 1,
+              px: 6,
+              py: 2,
+              fontSize: '1.1rem',
               fontWeight: 600,
               background: isConnecting
                 ? 'rgba(29, 185, 84, 0.6)'
@@ -246,15 +245,16 @@ function HomePage() {
           {/* Requirements Chips */}
           <Box
             sx={{
-              mt: 5,
+              mt: 2.5,
               display: 'flex',
-              gap: 2,
+              gap: 1.5,
               flexWrap: 'wrap',
               justifyContent: 'center',
             }}
           >
             <Chip
-              label="📹 Camera Required"
+              label="📹 Camera"
+              size="small"
               sx={{
                 bgcolor: 'rgba(255, 255, 255, 0.2)',
                 color: 'white',
@@ -263,7 +263,8 @@ function HomePage() {
               }}
             />
             <Chip
-              label="🎧 Spotify Premium"
+              label="🎧 Spotify"
+              size="small"
               sx={{
                 bgcolor: 'rgba(255, 255, 255, 0.2)',
                 color: 'white',
@@ -273,6 +274,7 @@ function HomePage() {
             />
             <Chip
               label="✨ AI Powered"
+              size="small"
               sx={{
                 bgcolor: 'rgba(255, 255, 255, 0.2)',
                 color: 'white',
@@ -281,18 +283,6 @@ function HomePage() {
               }}
             />
           </Box>
-
-          {/* Footer Note */}
-          <Typography
-            variant="body2"
-            sx={{
-              mt: 6,
-              color: 'rgba(255, 255, 255, 0.8)',
-              fontSize: '0.95rem',
-            }}
-          >
-            💡 Make sure your camera and Spotify are ready before starting
-          </Typography>
         </Box>
       </Container>
     </Box>

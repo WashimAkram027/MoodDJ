@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, IconButton, LinearProgress, Avatar, Alert } from '@mui/material';
+import { Box, Typography, IconButton, LinearProgress, Avatar, Alert, Card, CardContent } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
@@ -94,6 +94,19 @@ function MusicPlayer() {
     album: '',
   };
 
+  // Get mood color for visual feedback
+  const moodColors = {
+    happy: '#4CAF50',
+    sad: '#2196F3',
+    neutral: '#9E9E9E',
+    angry: '#F44336',
+    surprised: '#FF9800',
+    excited: '#FF6F00',
+    calm: '#00BCD4',
+  };
+  
+  const currentMoodColor = moodColors[currentMood] || '#9E9E9E';
+
   return (
     <Box>
       <Typography variant="h6" gutterBottom>
@@ -106,73 +119,128 @@ function MusicPlayer() {
         </Alert>
       )}
 
-      {loading && <LinearProgress sx={{ mb: 2 }} />}
-
-      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-        <Avatar variant="rounded" sx={{ width: 80, height: 80 }}>
-          <MusicNoteIcon />
-        </Avatar>
-
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="subtitle1" noWrap sx={{ fontWeight: 600 }}>
-            {displayTrack.title}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" noWrap>
-            {displayTrack.artist}
-          </Typography>
-          {displayTrack.album && (
-            <Typography variant="caption" color="text.secondary" noWrap>
-              {displayTrack.album}
-            </Typography>
-          )}
-        </Box>
-      </Box>
-
-      <LinearProgress
-        variant="determinate"
-        value={isPlaying ? 50 : 0}
-        sx={{ mb: 2, borderRadius: 1 }}
-      />
-
-      <Box
+      <Card
         sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: 1,
+          background: `linear-gradient(135deg, ${currentMoodColor}15 0%, ${currentMoodColor}05 100%)`,
+          borderRadius: 2,
+          border: `1px solid ${currentMoodColor}30`,
         }}
       >
-        <IconButton color="primary" onClick={handlePrevious} disabled={!playlist.length}>
-          <SkipPreviousIcon />
-        </IconButton>
-        <IconButton
-          color="primary"
-          onClick={handlePlayPause}
-          disabled={!currentTrack}
-          sx={{
-            bgcolor: 'primary.main',
-            color: 'background.paper',
-            '&:hover': { bgcolor: 'primary.dark' },
-            width: 48,
-            height: 48,
-          }}
-        >
-          {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
-        </IconButton>
-        <IconButton color="primary" onClick={handleNext} disabled={!playlist.length}>
-          <SkipNextIcon />
-        </IconButton>
-      </Box>
+        <CardContent>
+          {loading && <LinearProgress sx={{ mb: 2, borderRadius: 1 }} />}
 
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        sx={{ mt: 2, display: 'block', textAlign: 'center' }}
-      >
-        {currentMood !== 'neutral' 
-          ? `Playing ${currentMood} mood music ${playlist.length > 0 ? `(${playlist.length} songs)` : ''}`
-          : 'Music adapts to your mood in real-time'}
-      </Typography>
+          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+            <Avatar
+              variant="rounded"
+              sx={{
+                width: 80,
+                height: 80,
+                bgcolor: currentMoodColor,
+                boxShadow: `0 4px 12px ${currentMoodColor}40`,
+              }}
+            >
+              <MusicNoteIcon sx={{ fontSize: 40 }} />
+            </Avatar>
+
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="subtitle1" noWrap sx={{ fontWeight: 600, mb: 0.5 }}>
+                {displayTrack.title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" noWrap>
+                {displayTrack.artist}
+              </Typography>
+              {displayTrack.album && (
+                <Typography variant="caption" color="text.secondary" noWrap>
+                  {displayTrack.album}
+                </Typography>
+              )}
+            </Box>
+          </Box>
+
+          <Box sx={{ mb: 3 }}>
+            <LinearProgress
+              variant="determinate"
+              value={isPlaying ? 50 : 0}
+              sx={{
+                height: 6,
+                borderRadius: 3,
+                bgcolor: 'action.hover',
+                '& .MuiLinearProgress-bar': {
+                  bgcolor: currentMoodColor,
+                  borderRadius: 3,
+                },
+              }}
+            />
+          </Box>
+
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: 2,
+            }}
+          >
+            <IconButton
+              onClick={handlePrevious}
+              disabled={!playlist.length}
+              sx={{
+                color: currentMoodColor,
+                '&:hover': { bgcolor: `${currentMoodColor}15` },
+                '&:disabled': { color: 'action.disabled' },
+              }}
+            >
+              <SkipPreviousIcon sx={{ fontSize: 32 }} />
+            </IconButton>
+
+            <IconButton
+              onClick={handlePlayPause}
+              disabled={!currentTrack}
+              sx={{
+                bgcolor: currentMoodColor,
+                color: 'white',
+                width: 56,
+                height: 56,
+                boxShadow: `0 4px 12px ${currentMoodColor}40`,
+                '&:hover': {
+                  bgcolor: currentMoodColor,
+                  transform: 'scale(1.05)',
+                  boxShadow: `0 6px 16px ${currentMoodColor}60`,
+                },
+                '&:disabled': {
+                  bgcolor: 'action.disabledBackground',
+                  color: 'action.disabled',
+                },
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {isPlaying ? <PauseIcon sx={{ fontSize: 32 }} /> : <PlayArrowIcon sx={{ fontSize: 32 }} />}
+            </IconButton>
+
+            <IconButton
+              onClick={handleNext}
+              disabled={!playlist.length}
+              sx={{
+                color: currentMoodColor,
+                '&:hover': { bgcolor: `${currentMoodColor}15` },
+                '&:disabled': { color: 'action.disabled' },
+              }}
+            >
+              <SkipNextIcon sx={{ fontSize: 32 }} />
+            </IconButton>
+          </Box>
+
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ mt: 3, display: 'block', textAlign: 'center' }}
+          >
+            {currentMood !== 'neutral' 
+              ? `🎵 Playing ${currentMood} mood music ${playlist.length > 0 ? `• ${playlist.length} songs` : ''}`
+              : '🎵 Music adapts to your mood in real-time'}
+          </Typography>
+        </CardContent>
+      </Card>
     </Box>
   );
 }
