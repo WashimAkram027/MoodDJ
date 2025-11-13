@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Container, Grid, Paper, Typography, Box, Chip, Alert, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { Videocam, MusicNote, Analytics as AnalyticsIcon, Mood } from '@mui/icons-material';
+import { Videocam, MusicNote, Mood } from '@mui/icons-material';
 import VideoFeed from '../components/VideoFeed/VideoFeed';
 import MoodDisplay from '../components/MoodDisplay/MoodDisplay';
 import MusicPlayer from '../components/MusicPlayer/MusicPlayer';
-import Analytics from '../components/Analytics/Analytics';
 import { AuthContext } from '../App';
 
 function DashboardPage() {
@@ -198,33 +197,6 @@ function DashboardPage() {
             </Grid>
           </Grid>
 
-          {/* Analytics - Full Width Bottom */}
-          <Grid item xs={12}>
-            <Paper
-              elevation={8}
-              sx={{
-                p: 3,
-                borderRadius: 3,
-                background: 'linear-gradient(to right, #ffffff, #f0f4f8)',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: '0 12px 24px rgba(0,0,0,0.15)'
-                }
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <AnalyticsIcon sx={{ mr: 1, color: '#667eea', fontSize: 28 }} />
-                <Typography variant="h5" sx={{ fontWeight: 600, color: '#2d3748' }}>
-                  Mood Analytics
-                </Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                📊 Track your emotional patterns and music preferences over time
-              </Typography>
-              <Analytics />
-            </Paper>
-          </Grid>
         </Grid>
 
         {/* Footer Help Text */}

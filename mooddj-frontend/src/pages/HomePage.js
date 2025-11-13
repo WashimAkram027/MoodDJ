@@ -50,8 +50,8 @@ function HomePage() {
     },
     {
       icon: <AutoAwesomeIcon sx={{ fontSize: 32, color: '#f093fb' }} />,
-      title: 'Mood Analytics',
-      description: 'Track emotional patterns'
+      title: 'Seamless Playback',
+      description: 'Integrated with Spotify'
     }
   ];
 
