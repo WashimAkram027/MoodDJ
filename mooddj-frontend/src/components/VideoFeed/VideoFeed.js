@@ -19,10 +19,10 @@ function VideoFeed() {
     let intervalId;
 
     if (isActive && isDetecting) {
-      // Capture and process frame every 2 seconds
+      // Capture and process frame every 5 seconds
       intervalId = setInterval(async () => {
         await captureAndDetectMood();
-      }, 500);
+      }, 5000);
     }
 
     return () => {
@@ -194,7 +194,7 @@ function VideoFeed() {
       </Box>
 
       <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-        {isDetecting ? '🟢 Detecting mood every 2 seconds...' : 'Your video is processed locally and never stored'}
+        {isDetecting ? '🟢 Detecting mood every 5 seconds...' : 'Your video is processed locally and never stored'}
       </Typography>
     </Box>
   );

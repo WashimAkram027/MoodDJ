@@ -130,7 +130,7 @@ function DashboardPage() {
                 </Typography>
               </Box>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                📸 Your facial expressions are analyzed every 2 seconds to detect your mood
+                📸 Your facial expressions are analyzed every 5 seconds to detect your mood
               </Typography>
               <VideoFeed />
             </Paper>
