@@ -1,0 +1,61 @@
+# Python/Backend
+.venv/
+venv/
+__pycache__/
+*.pyc
+flask_session/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Spotify/Cache files
+.cache
+.cache/
+*.cache
+.spotify_cache
+.spotify_cache/
+
+# Node/Frontend
+node_modules/
+dist/
+build/
+
+# Environment files
+.env
+.env.*
+.env*.local
+!.env.example
+
+# Documentation (except README)
+*.md
+!README.md
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# production
+/build
+
+# misc
+.env.example/
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

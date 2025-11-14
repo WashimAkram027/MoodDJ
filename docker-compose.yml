@@ -1,0 +1,75 @@
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: mooddj
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/database_schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      # Use AWS RDS database (comment these and uncomment local mysql below for fully local testing)
+      - DB_HOST=mooddj-database.c9wc8gkmgine.ca-central-1.rds.amazonaws.com
+      - DB_PORT=3306
+      - DB_USER=admin
+      - DB_PASSWORD=Tensorflow_python786
+      - DB_NAME=mooddj
+      # For fully local testing with local MySQL container, use these instead:
+      # - DB_HOST=mysql
+      # - DB_USER=root
+      # - DB_PASSWORD=rootpassword
+      # - DB_NAME=mooddj
+      - SESSION_TYPE=filesystem
+      - FLASK_ENV=development
+      - FRONTEND_URL=http://127.0.0.1:3000
+      - BACKEND_URL=http://127.0.0.1:5000
+      - SESSION_COOKIE_SECURE=False
+      - SESSION_COOKIE_SAMESITE=Lax
+    env_file:
+      - ./backend/.env
+    # Using AWS RDS, so no dependency on local mysql container
+    # For fully local testing, uncomment this:
+    # depends_on:
+    #   mysql:
+    #     condition: service_healthy
+    volumes:
+      - ./backend:/app
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+  frontend:
+    build:
+      context: ./mooddj-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
