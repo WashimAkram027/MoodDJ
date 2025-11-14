@@ -396,8 +396,10 @@ class SpotifyService:
                         tracks_without_features += 1
                         print(f"✗ No features")
 
-                    # Rate limiting: 1 second between RapidAPI calls
-                    time.sleep(1.0)
+                    # Rate limiting: 2.5 seconds between RapidAPI calls to avoid rate limiting
+                    # RapidAPI free tier has strict limits, this delay helps prevent 429 errors
+                    if idx < len(results['items']):  # Don't delay after last track in batch
+                        time.sleep(2.5)
 
                 offset += len(results['items'])
                 print(f"[INFO] Batch complete. Progress: {total_processed}/{limit}")

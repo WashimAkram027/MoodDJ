@@ -37,13 +37,15 @@ class AudioFeaturesService:
         if not self.enabled:
             print("[WARN] AudioFeaturesService: RAPIDAPI_KEY not configured. Audio features will not be available.")
 
-    def get_audio_features(self, track_id: str, retry_on_rate_limit: bool = True) -> Optional[Dict[str, float]]:
+    def get_audio_features(self, track_id: str, retry_on_rate_limit: bool = True, retry_count: int = 0, max_retries: int = 3) -> Optional[Dict[str, float]]:
         """
         Fetch audio features for a Spotify track from RapidAPI SoundNet
 
         Args:
             track_id: Spotify track ID (e.g., "7s25THrKz86DM225dOYwnr")
-            retry_on_rate_limit: If True, automatically retry once after rate limit with delay
+            retry_on_rate_limit: If True, automatically retry with exponential backoff
+            retry_count: Current retry attempt (internal use)
+            max_retries: Maximum number of retries on rate limit
 
         Returns:
             dict with 'valence', 'energy', 'tempo' keys, or None if failed
@@ -70,16 +72,20 @@ class AudioFeaturesService:
                 return None
 
             elif response.status_code == 429:
-                retry_after = response.headers.get('Retry-After', '2')
-                print(f"[WARN] Rate limited by SoundNet API (Retry-After: {retry_after}s)")
+                if retry_on_rate_limit and retry_count < max_retries:
+                    retry_after = response.headers.get('Retry-After', '3')
+                    wait_time = int(retry_after) if retry_after.isdigit() else 3
 
-                if retry_on_rate_limit:
-                    wait_time = int(retry_after) if retry_after.isdigit() else 2
-                    print(f"[INFO] Waiting {wait_time}s before retry...")
-                    time.sleep(wait_time)
-                    # Retry once with retry disabled to avoid infinite loop
-                    return self.get_audio_features(track_id, retry_on_rate_limit=False)
-                return None
+                    # Exponential backoff: base wait time * 2^retry_count
+                    backoff_time = wait_time * (2 ** retry_count)
+                    print(f"[WARN] Rate limited (attempt {retry_count + 1}/{max_retries}). Waiting {backoff_time}s...")
+                    time.sleep(backoff_time)
+
+                    # Retry with incremented count
+                    return self.get_audio_features(track_id, retry_on_rate_limit=True, retry_count=retry_count + 1, max_retries=max_retries)
+                else:
+                    print(f"[ERROR] Rate limit exceeded after {max_retries} retries")
+                    return None
 
             elif response.status_code == 403:
                 print(f"[ERROR] RapidAPI access forbidden (403). Check API key and subscription.")
