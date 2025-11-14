@@ -66,11 +66,20 @@ class SpotifyService:
             dict: Token information containing access_token, refresh_token, expires_at
         """
         try:
+            print(f"[INFO] Exchanging auth code for token...")
+            print(f"[INFO] Using redirect_uri: {self.redirect_uri}")
+            print(f"[INFO] Using client_id: {self.client_id[:8]}...")
+
             oauth = self.get_oauth_manager()
             token_info = oauth.get_access_token(code, as_dict=True, check_cache=False)
+
+            print(f"[INFO] Token exchange successful!")
             return token_info
         except Exception as e:
             print(f"[ERROR] Failed to exchange code for token: {e}")
+            print(f"[ERROR] Error type: {type(e).__name__}")
+            import traceback
+            print(f"[ERROR] Traceback: {traceback.format_exc()}")
             return None
 
     def refresh_access_token(self, refresh_token: str):
@@ -152,9 +161,56 @@ class SpotifyService:
         except Exception as e:
             print(f"[ERROR] Error fetching user profile: {e}")
             return None
-    
-    def get_songs_for_mood(self, mood, limit=30):
-        """Get songs from database that match the mood"""
+
+    def _detect_mood_from_features(self, valence, energy, tempo):
+        """
+        Determine mood category from audio features
+
+        Returns:
+            str: mood name that best matches the audio features
+        """
+        # Mood to audio feature mappings
+        mood_params = {
+            'happy': {'valence': (0.6, 1.0), 'energy': (0.5, 1.0), 'tempo': (100, 180)},
+            'sad': {'valence': (0.0, 0.4), 'energy': (0.2, 0.5), 'tempo': (60, 100)},
+            'excited': {'valence': (0.7, 1.0), 'energy': (0.7, 1.0), 'tempo': (120, 200)},
+            'calm': {'valence': (0.3, 0.7), 'energy': (0.2, 0.5), 'tempo': (60, 100)},
+            'neutral': {'valence': (0.4, 0.7), 'energy': (0.4, 0.7), 'tempo': (80, 130)},
+            'angry': {'valence': (0.0, 0.4), 'energy': (0.6, 1.0), 'tempo': (120, 180)},
+            'surprised': {'valence': (0.5, 1.0), 'energy': (0.6, 1.0), 'tempo': (110, 180)}
+        }
+
+        # Find best matching mood
+        best_mood = 'neutral'
+        best_score = 0
+
+        for mood_name, params in mood_params.items():
+            score = 0
+            if params['valence'][0] <= valence <= params['valence'][1]:
+                score += 1
+            if params['energy'][0] <= energy <= params['energy'][1]:
+                score += 1
+            if params['tempo'][0] <= tempo <= params['tempo'][1]:
+                score += 1
+
+            if score > best_score:
+                best_score = score
+                best_mood = mood_name
+
+        return best_mood
+
+    def get_songs_for_mood(self, mood, limit=30, user_id=None):
+        """
+        Get songs from database that match the mood, filtered by user
+
+        Args:
+            mood: Mood name (happy, sad, excited, calm, neutral, angry, surprised)
+            limit: Maximum number of songs to return
+            user_id: Spotify user ID to filter songs by user's library
+
+        Returns:
+            list: Songs matching the mood criteria for this user
+        """
         try:
             # Mood to audio feature mappings
             mood_params = {
@@ -166,51 +222,82 @@ class SpotifyService:
                 'angry': {'valence': (0.0, 0.4), 'energy': (0.6, 1.0), 'tempo': (120, 180)},
                 'surprised': {'valence': (0.5, 1.0), 'energy': (0.6, 1.0), 'tempo': (110, 180)}
             }
-            
+
             params = mood_params.get(mood, mood_params['neutral'])
-            
-            query = """
-                SELECT * FROM songs 
-                WHERE valence BETWEEN %s AND %s
-                AND energy BETWEEN %s AND %s
-                AND tempo BETWEEN %s AND %s
-                ORDER BY RAND()
-                LIMIT %s
-            """
-            
-            songs = execute_query(
-                query,
-                (
-                    params['valence'][0], params['valence'][1],
-                    params['energy'][0], params['energy'][1],
-                    params['tempo'][0], params['tempo'][1],
-                    limit
-                ),
-                fetch=True
-            )
-            
+
+            # Query user-specific songs with mood matching
+            if user_id:
+                query = """
+                    SELECT s.* FROM songs s
+                    INNER JOIN user_songs us ON s.song_id = us.song_id
+                    INNER JOIN users u ON us.user_id = u.user_id
+                    WHERE u.spotify_id = %s
+                    AND s.valence BETWEEN %s AND %s
+                    AND s.energy BETWEEN %s AND %s
+                    AND s.tempo BETWEEN %s AND %s
+                    ORDER BY RAND()
+                    LIMIT %s
+                """
+
+                songs = execute_query(
+                    query,
+                    (
+                        user_id,
+                        params['valence'][0], params['valence'][1],
+                        params['energy'][0], params['energy'][1],
+                        params['tempo'][0], params['tempo'][1],
+                        limit
+                    ),
+                    fetch=True
+                )
+            else:
+                # Fallback to global songs if user_id not provided (for backward compatibility)
+                query = """
+                    SELECT * FROM songs
+                    WHERE valence BETWEEN %s AND %s
+                    AND energy BETWEEN %s AND %s
+                    AND tempo BETWEEN %s AND %s
+                    ORDER BY RAND()
+                    LIMIT %s
+                """
+
+                songs = execute_query(
+                    query,
+                    (
+                        params['valence'][0], params['valence'][1],
+                        params['energy'][0], params['energy'][1],
+                        params['tempo'][0], params['tempo'][1],
+                        limit
+                    ),
+                    fetch=True
+                )
+
             return songs
         except Exception as e:
             print(f"[ERROR] Error fetching songs for mood: {e}")
             return []
     
-    def fetch_and_store_user_tracks(self, limit=50, sp_client=None):
+    def fetch_and_store_user_tracks(self, limit=50, sp_client=None, user_id=None):
         """
         Fetch user's saved tracks and store them with audio features from RapidAPI
 
         Args:
             limit: Number of tracks to fetch
             sp_client: Spotify client instance (from session token)
+            user_id: User's Spotify ID for multi-user support
 
         Flow:
         1. Get track metadata from Spotify (id, title, artist, album, duration)
         2. Fetch audio features from RapidAPI SoundNet (valence, energy, tempo)
-        3. Store complete record in database
+        3. Store complete record in database (songs + user_songs tables)
 
         Note: Spotify's audio_features API is deprecated and not used.
         """
         if not sp_client:
             return {'success': False, 'error': 'No Spotify client provided'}
+
+        if not user_id:
+            return {'success': False, 'error': 'User ID required for syncing library'}
 
         try:
             offset = 0
@@ -244,7 +331,7 @@ class SpotifyService:
                     # Fetch audio features from RapidAPI (primary and only source)
                     features = self.audio_features_service.get_audio_features(track_id)
 
-                    # Store track in database
+                    # Store track in songs table
                     query = """
                         INSERT INTO songs (spotify_song_id, title, artist, album, duration_ms, valence, energy, tempo)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
@@ -255,7 +342,8 @@ class SpotifyService:
                             duration_ms=VALUES(duration_ms),
                             valence=VALUES(valence),
                             energy=VALUES(energy),
-                            tempo=VALUES(tempo)
+                            tempo=VALUES(tempo),
+                            song_id=LAST_INSERT_ID(song_id)
                     """
 
                     execute_query(query, (
@@ -268,6 +356,36 @@ class SpotifyService:
                         features['energy'] if features else None,
                         features['tempo'] if features else None
                     ))
+
+                    # Get the song_id
+                    song_id_query = "SELECT song_id FROM songs WHERE spotify_song_id = %s"
+                    song_result = execute_query(song_id_query, (track_id,), fetch=True)
+
+                    if song_result and len(song_result) > 0:
+                        song_id = song_result[0]['song_id']
+
+                        # Determine mood from audio features (if available)
+                        mood_id = None
+                        if features:
+                            detected_mood = self._detect_mood_from_features(
+                                features['valence'],
+                                features['energy'],
+                                features['tempo']
+                            )
+                            # Get mood_id from mood name
+                            mood_query = "SELECT mood_id FROM moods WHERE mood_name = %s"
+                            mood_result = execute_query(mood_query, (detected_mood,), fetch=True)
+                            if mood_result and len(mood_result) > 0:
+                                mood_id = mood_result[0]['mood_id']
+
+                        # Link song to user in user_songs table
+                        if mood_id:
+                            user_song_query = """
+                                INSERT INTO user_songs (user_id, song_id, mood_id)
+                                SELECT u.user_id, %s, %s FROM users u WHERE u.spotify_id = %s
+                                ON DUPLICATE KEY UPDATE mood_id=VALUES(mood_id)
+                            """
+                            execute_query(user_song_query, (song_id, mood_id, user_id))
 
                     total_processed += 1
 

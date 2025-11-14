@@ -109,14 +109,6 @@ def handle_stop_detection(data):
     logger.info('Stopping mood detection')
     emit('detection_stopped', {'status': 'stopped'})
 
-# Health check endpoint
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    return jsonify({
-        'status': 'healthy',
-        'message': 'MoodDJ Backend is running'
-    }), 200
-
 # Error handlers
 @app.errorhandler(404)
 def not_found(error):
@@ -176,8 +168,10 @@ if __name__ == '__main__':
     logger.info('Starting MoodDJ Backend Server...')
     logger.info('-'*70)
 
-    # Run startup check and sync if needed
-    check_and_sync_library()
+    # Auto-sync disabled for multi-user support
+    # Users must manually sync via POST /api/music/sync after login
+    # check_and_sync_library()
+    logger.info('ℹ️  Auto-sync is disabled. Users sync their library via POST /api/music/sync')
 
     logger.info('-'*70)
     logger.info('🚀 Server ready! Running on http://0.0.0.0:5000')

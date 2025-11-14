@@ -35,19 +35,23 @@ def get_spotify_client():
 def recommend_songs():
     """Get song recommendations based on mood"""
     try:
+        # Get user_id from session (optional - fallback to global if not provided)
+        user_id = session.get('user_id')
+
         data = request.json
         mood = data.get('mood', 'neutral')
         limit = data.get('limit', 30)
-        
-        songs = spotify_service.get_songs_for_mood(mood, limit)
-        
+
+        songs = spotify_service.get_songs_for_mood(mood, limit, user_id)
+
         return jsonify({
             'success': True,
             'mood': mood,
             'songs': songs,
-            'count': len(songs)
+            'count': len(songs),
+            'user_specific': user_id is not None
         }), 200
-        
+
     except Exception as e:
         print(f"Error recommending songs: {e}")
         return jsonify({'error': str(e)}), 500
@@ -105,6 +109,39 @@ def get_current_track():
         print(f"Error getting current track: {e}")
         return jsonify({'error': str(e)}), 500
 
+@music_bp.route('/sync/status', methods=['GET'])
+def get_sync_status():
+    """Check if user has synced their Spotify library"""
+    try:
+        from config.database import execute_query
+
+        # Get user_id from session
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'User not authenticated. Please log in.'}), 401
+
+        # Check how many songs the user has synced
+        query = """
+            SELECT COUNT(DISTINCT us.song_id) as song_count
+            FROM user_songs us
+            INNER JOIN users u ON us.user_id = u.user_id
+            WHERE u.spotify_id = %s
+        """
+        result = execute_query(query, (user_id,), fetch=True)
+        song_count = result[0]['song_count'] if result else 0
+
+        return jsonify({
+            'success': True,
+            'synced': song_count > 0,
+            'song_count': song_count,
+            'needs_sync': song_count == 0
+        }), 200
+
+    except Exception as e:
+        print(f"Error checking sync status: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @music_bp.route('/sync', methods=['POST'])
 def sync_user_library():
     """Sync user's Spotify library to database"""
@@ -114,10 +151,15 @@ def sync_user_library():
         if error:
             return error
 
-        data = request.json or {}
-        limit = data.get('limit', 50)
+        # Get user_id from session
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'User not authenticated. Please log in.'}), 401
 
-        result = spotify_service.fetch_and_store_user_tracks(limit, sp_client)
+        data = request.json or {}
+        limit = data.get('limit', 25)
+
+        result = spotify_service.fetch_and_store_user_tracks(limit, sp_client, user_id)
 
         if result['success']:
             return jsonify(result), 200

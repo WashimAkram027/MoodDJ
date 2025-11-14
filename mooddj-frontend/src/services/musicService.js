@@ -19,8 +19,13 @@ export const musicService = {
     return api.get('/api/music/current');
   },
 
+  // Check sync status
+  getSyncStatus: async () => {
+    return api.get('/api/music/sync/status');
+  },
+
   // Sync Spotify library
-  syncLibrary: async (limit = 50) => {
+  syncLibrary: async (limit = 25) => {
     return api.post('/api/music/sync', { limit });
   },
 

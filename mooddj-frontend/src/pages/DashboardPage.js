@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Container, Grid, Paper, Typography, Box, Chip, Alert, CircularProgress } from '@mui/material';
+import { Container, Grid, Paper, Typography, Box, Chip, Alert, CircularProgress, Button, Card, CardContent } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { Videocam, MusicNote, Mood } from '@mui/icons-material';
+import { Videocam, MusicNote, Mood, CloudSync, CheckCircle } from '@mui/icons-material';
 import VideoFeed from '../components/VideoFeed/VideoFeed';
 import MoodDisplay from '../components/MoodDisplay/MoodDisplay';
 import MusicPlayer from '../components/MusicPlayer/MusicPlayer';
 import { AuthContext } from '../App';
+import { musicService } from '../services/musicService';
 
 function DashboardPage() {
   const navigate = useNavigate();
@@ -15,6 +16,12 @@ function DashboardPage() {
   const [isConnected, setIsConnected] = useState(true);
   const [cameraActive, setCameraActive] = useState(false);
 
+  // Sync status state
+  const [syncStatus, setSyncStatus] = useState(null);
+  const [checkingSyncStatus, setCheckingSyncStatus] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState(null);
+
   // Check authentication and redirect if not logged in
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -22,6 +29,47 @@ function DashboardPage() {
       navigate('/');
     }
   }, [isAuthenticated, authLoading, navigate]);
+
+  // Check sync status when dashboard loads
+  useEffect(() => {
+    if (isAuthenticated) {
+      checkSyncStatus();
+    }
+  }, [isAuthenticated]);
+
+  const checkSyncStatus = async () => {
+    try {
+      setCheckingSyncStatus(true);
+      const response = await musicService.getSyncStatus();
+      if (response.success) {
+        setSyncStatus(response);
+      }
+    } catch (error) {
+      console.error('Error checking sync status:', error);
+    } finally {
+      setCheckingSyncStatus(false);
+    }
+  };
+
+  const handleSyncLibrary = async () => {
+    try {
+      setSyncing(true);
+      setSyncError(null);
+      const response = await musicService.syncLibrary(50);
+
+      if (response.success) {
+        // Refresh sync status after successful sync
+        await checkSyncStatus();
+      } else {
+        setSyncError(response.error || 'Failed to sync library');
+      }
+    } catch (error) {
+      console.error('Error syncing library:', error);
+      setSyncError('Failed to sync library. Please try again.');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   // Show loading while checking auth
   if (authLoading) {
@@ -105,6 +153,78 @@ function DashboardPage() {
           <strong>Getting Started:</strong> Click "Start Detection" in the video feed below.
           Make sure Spotify is open and playing on your device for the best experience.
         </Alert>
+
+        {/* Sync Library Prompt */}
+        {!checkingSyncStatus && syncStatus && syncStatus.needs_sync && (
+          <Card
+            sx={{
+              mb: 3,
+              borderRadius: 3,
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              boxShadow: '0 8px 24px rgba(102, 126, 234, 0.3)',
+            }}
+          >
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <CloudSync sx={{ fontSize: 48, color: 'white' }} />
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
+                      Welcome to MoodDJ!
+                    </Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.95 }}>
+                      Sync your Spotify library to get personalized music recommendations based on your mood.
+                    </Typography>
+                  </Box>
+                </Box>
+                <Button
+                  variant="contained"
+                  size="large"
+                  onClick={handleSyncLibrary}
+                  disabled={syncing}
+                  startIcon={syncing ? <CircularProgress size={20} color="inherit" /> : <CloudSync />}
+                  sx={{
+                    bgcolor: 'white',
+                    color: '#667eea',
+                    fontWeight: 600,
+                    px: 4,
+                    py: 1.5,
+                    borderRadius: 2,
+                    '&:hover': {
+                      bgcolor: 'rgba(255,255,255,0.9)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 6px 16px rgba(0,0,0,0.2)',
+                    },
+                    '&:disabled': {
+                      bgcolor: 'rgba(255,255,255,0.7)',
+                      color: '#667eea',
+                    },
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  {syncing ? 'Syncing 50 songs for demo...' : 'Sync Library Now'}
+                </Button>
+              </Box>
+              {syncError && (
+                <Alert severity="error" sx={{ mt: 2 }} onClose={() => setSyncError(null)}>
+                  {syncError}
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Sync Success Message */}
+        {!checkingSyncStatus && syncStatus && syncStatus.synced && (
+          <Alert
+            severity="success"
+            icon={<CheckCircle />}
+            sx={{ mb: 3, borderRadius: 2 }}
+          >
+            <strong>Library Synced!</strong> You have {syncStatus.song_count} songs ready for mood-based playback.
+          </Alert>
+        )}
 
         <Grid container spacing={3}>
           {/* Video Feed - Left Column */}
