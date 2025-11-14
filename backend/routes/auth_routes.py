@@ -40,6 +40,10 @@ def callback():
     Exchanges authorization code for access token and stores in session
     """
     try:
+        # Clear any existing session data first (important for multi-user support)
+        session.clear()
+        print("[DEBUG] Cleared existing session for new login")
+
         # Get authorization code from query params
         code = request.args.get('code')
         error = request.args.get('error')

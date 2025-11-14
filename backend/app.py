@@ -168,8 +168,10 @@ if __name__ == '__main__':
     logger.info('Starting MoodDJ Backend Server...')
     logger.info('-'*70)
 
-    # Run startup check and sync if needed
-    check_and_sync_library()
+    # Auto-sync disabled for multi-user support
+    # Users must manually sync via POST /api/music/sync after login
+    # check_and_sync_library()
+    logger.info('ℹ️  Auto-sync is disabled. Users sync their library via POST /api/music/sync')
 
     logger.info('-'*70)
     logger.info('🚀 Server ready! Running on http://0.0.0.0:5000')
