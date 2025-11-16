@@ -7,6 +7,36 @@
 
 ## Recent Changes & Progress
 
+### 4. WebSocket CORS Configuration for Production (In Progress)
+**Date:** 2025-01-16
+**Goal:** Fix WebSocket connection failures on production deployment
+
+**Issue Identified:**
+- WebSocket connections failing in production at `wss://moodhdj.shop/socket.io/`
+- Frontend `.env.production` using localhost URLs instead of actual domain
+- Backend CORS not configured to allow moodhdj.shop origin
+
+**Changes Made (Ready for Deployment):**
+- ✅ Updated `mooddj-frontend/.env.production` to use `https://moodhdj.shop:5000`
+- ✅ Added `https://moodhdj.shop` and `http://moodhdj.shop` to backend CORS origins
+- ✅ Added moodhdj.shop to SocketIO `cors_allowed_origins` in backend/app.py
+- ✅ Committed and pushed changes to main branch
+
+**Files Modified:**
+- `mooddj-frontend/.env.production` (lines 5-6)
+- `backend/app.py` (lines 53-54, 66-67)
+
+**Next Steps:**
+- [ ] Deploy to EC2 via AWS Instance Connect
+- [ ] Run `git pull origin main`
+- [ ] Rebuild containers: `docker-compose down && docker-compose up -d --build`
+- [ ] Verify WebSocket connection in browser console
+- [ ] Test full application functionality
+
+**Note:** SSH connection issues on Windows resolved by using AWS EC2 Instance Connect through browser console.
+
+---
+
 ### 3. Production Environment Documentation & Workflow Setup
 **Date:** 2025-01-16
 **Goal:** Document production configuration and establish development workflow
