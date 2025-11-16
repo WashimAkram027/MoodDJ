@@ -49,7 +49,9 @@ CORS(app, resources={
         "origins": [
             os.getenv('FRONTEND_URL', 'http://127.0.0.1:3000'),
             "http://localhost:3000",
-            "http://127.0.0.1:3000"
+            "http://127.0.0.1:3000",
+            "https://moodhdj.shop",
+            "http://moodhdj.shop"
         ],
         "methods": ["GET", "POST", "PUT", "DELETE"],
         "allow_headers": ["Content-Type", "Authorization"],
@@ -58,7 +60,12 @@ CORS(app, resources={
 })
 
 # Initialize SocketIO with CORS
-socketio = SocketIO(app, cors_allowed_origins=["http://localhost:3000", "http://127.0.0.1:3000"], async_mode='threading')
+socketio = SocketIO(app, cors_allowed_origins=[
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://moodhdj.shop",
+    "http://moodhdj.shop"
+], async_mode='threading')
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
