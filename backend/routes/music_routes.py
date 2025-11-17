@@ -170,6 +170,41 @@ def sync_user_library():
         print(f"Error syncing library: {e}")
         return jsonify({'error': str(e)}), 500
 
+@music_bp.route('/reset', methods=['POST'])
+def reset_library():
+    """Reset user's synced library"""
+    try:
+        from config.database import execute_query
+        
+        # Get user_id from session
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+
+        # Delete user's song links
+        delete_user_songs = """
+            DELETE us FROM user_songs us
+            INNER JOIN users u ON us.user_id = u.user_id
+            WHERE u.spotify_id = %s
+        """
+        execute_query(delete_user_songs, (user_id,))
+
+        # Delete orphaned songs (not linked to any user)
+        delete_orphaned = """
+            DELETE FROM songs 
+            WHERE song_id NOT IN (SELECT DISTINCT song_id FROM user_songs)
+        """
+        execute_query(delete_orphaned)
+
+        return jsonify({
+            'success': True,
+            'message': 'Library reset successfully'
+        }), 200
+
+    except Exception as e:
+        print(f"Error resetting library: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @music_bp.route('/playlist/create', methods=['POST'])
 def create_playlist():
     """Create a mood-based playlist"""
