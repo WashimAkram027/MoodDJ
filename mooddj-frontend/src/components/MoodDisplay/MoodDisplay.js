@@ -3,19 +3,13 @@ import { Box, Typography, Chip } from '@mui/material';
 import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
 import SentimentNeutralIcon from '@mui/icons-material/SentimentNeutral';
 import SentimentDissatisfiedIcon from '@mui/icons-material/SentimentDissatisfied';
-import SentimentVerySatisfiedIcon from '@mui/icons-material/SentimentVerySatisfied';
 import useStore from '../../store/useStore';
 
 const moodConfig = {
   happy: {
-    icon: SentimentVerySatisfiedIcon,
+    icon: SentimentSatisfiedAltIcon,
     color: '#4CAF50',
     label: 'Happy',
-  },
-  sad: {
-    icon: SentimentDissatisfiedIcon,
-    color: '#2196F3',
-    label: 'Sad',
   },
   neutral: {
     icon: SentimentNeutralIcon,
@@ -26,21 +20,6 @@ const moodConfig = {
     icon: SentimentDissatisfiedIcon,
     color: '#F44336',
     label: 'Angry',
-  },
-  surprised: {
-    icon: SentimentSatisfiedAltIcon,
-    color: '#FF9800',
-    label: 'Surprised',
-  },
-  excited: {
-    icon: SentimentVerySatisfiedIcon,
-    color: '#FF6F00',
-    label: 'Excited',
-  },
-  calm: {
-    icon: SentimentNeutralIcon,
-    color: '#00BCD4',
-    label: 'Calm',
   },
 };
 
