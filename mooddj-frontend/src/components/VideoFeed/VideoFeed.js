@@ -1,11 +1,53 @@
 import React, { useRef, useState, useEffect } from 'react';
 import Webcam from 'react-webcam';
-import { Box, Button, Typography, Alert } from '@mui/material';
+import { Box, Button, Typography, Alert, Chip } from '@mui/material';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VideocamOffIcon from '@mui/icons-material/VideocamOff';
+import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
+import SentimentNeutralIcon from '@mui/icons-material/SentimentNeutral';
+import SentimentDissatisfiedIcon from '@mui/icons-material/SentimentDissatisfied';
+import SentimentVerySatisfiedIcon from '@mui/icons-material/SentimentVerySatisfied';
 import { moodService } from '../../services/moodService';
 import useStore from '../../store/useStore';
 import websocketService from '../../services/websocket';
+
+const moodConfig = {
+  happy: {
+    icon: SentimentVerySatisfiedIcon,
+    color: '#4CAF50',
+    label: 'Happy',
+  },
+  sad: {
+    icon: SentimentDissatisfiedIcon,
+    color: '#2196F3',
+    label: 'Sad',
+  },
+  neutral: {
+    icon: SentimentNeutralIcon,
+    color: '#9E9E9E',
+    label: 'Neutral',
+  },
+  angry: {
+    icon: SentimentDissatisfiedIcon,
+    color: '#F44336',
+    label: 'Angry',
+  },
+  surprised: {
+    icon: SentimentSatisfiedAltIcon,
+    color: '#FF9800',
+    label: 'Surprised',
+  },
+  excited: {
+    icon: SentimentVerySatisfiedIcon,
+    color: '#FF6F00',
+    label: 'Excited',
+  },
+  calm: {
+    icon: SentimentNeutralIcon,
+    color: '#00BCD4',
+    label: 'Calm',
+  },
+};
 
 function VideoFeed() {
   const webcamRef = useRef(null);
