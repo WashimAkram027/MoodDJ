@@ -22,7 +22,7 @@ function VideoFeed() {
       // Capture and process frame every 5 seconds
       intervalId = setInterval(async () => {
         await captureAndDetectMood();
-      }, 5000);
+      }, 3000);
     }
 
     return () => {

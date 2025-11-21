@@ -19,7 +19,7 @@ class SpotifyService:
 
     def __init__(self):
         self.sp = None  # Will be created per-request from session token
-        self.recently_played_tracks = []  # Track recent songs to avoid repeats
+        # Removed: self.recently_played_tracks - no longer tracking played songs
 
         # Spotify OAuth configuration
         self.client_id = os.getenv("SPOTIFY_CLIENT_ID")
@@ -197,10 +197,12 @@ class SpotifyService:
 
         return best_mood
 
-    def get_songs_for_mood(self, mood, limit=30, user_id=None):
+    def get_songs_for_mood(self, mood, limit=50, user_id=None):
         """
         Get songs from database that match the mood, filtered by user
         Only supports: happy, angry, neutral
+        
+        ALL SONGS ARE AVAILABLE EVERY TIME - NO REPETITION FILTERING
 
         Args:
             mood: Mood name (happy, angry, neutral)
@@ -208,7 +210,7 @@ class SpotifyService:
             user_id: Spotify user ID to filter songs by user's library
 
         Returns:
-            list: Songs matching the mood criteria for this user
+            list: Songs matching the mood criteria for this user (randomized)
         """
         try:
             # Mood to audio feature mappings (3 moods only)
@@ -220,130 +222,63 @@ class SpotifyService:
 
             params = mood_params.get(mood, mood_params['neutral'])
 
-            # Query user-specific songs with mood matching, excluding recently played
+            # Query user-specific songs with mood matching
+            # NO EXCLUSION of previously played songs - all songs available every time
             if user_id:
-                # Exclude recently played songs AND songs without audio features
-                if self.recently_played_tracks:
-                    placeholders = ','.join(['%s'] * len(self.recently_played_tracks))
-                    query = f"""
-                        SELECT s.* FROM songs s
-                        INNER JOIN user_songs us ON s.song_id = us.song_id
-                        INNER JOIN users u ON us.user_id = u.user_id
-                        WHERE u.spotify_id = %s
-                        AND s.valence BETWEEN %s AND %s
-                        AND s.energy BETWEEN %s AND %s
-                        AND s.tempo BETWEEN %s AND %s
-                        AND s.valence IS NOT NULL
-                        AND s.energy IS NOT NULL
-                        AND s.tempo IS NOT NULL
-                        AND s.spotify_song_id NOT IN ({placeholders})
-                        ORDER BY RAND()
-                        LIMIT %s
-                    """
-                    
-                    songs = execute_query(
-                        query,
-                        (
-                            user_id,
-                            params['valence'][0], params['valence'][1],
-                            params['energy'][0], params['energy'][1],
-                            params['tempo'][0], params['tempo'][1],
-                            *self.recently_played_tracks,
-                            limit
-                        ),
-                        fetch=True
-                    )
-                else:
-                    # No recently played tracks yet
-                    query = """
-                        SELECT s.* FROM songs s
-                        INNER JOIN user_songs us ON s.song_id = us.song_id
-                        INNER JOIN users u ON us.user_id = u.user_id
-                        WHERE u.spotify_id = %s
-                        AND s.valence BETWEEN %s AND %s
-                        AND s.energy BETWEEN %s AND %s
-                        AND s.tempo BETWEEN %s AND %s
-                        AND s.valence IS NOT NULL
-                        AND s.energy IS NOT NULL
-                        AND s.tempo IS NOT NULL
-                        ORDER BY RAND()
-                        LIMIT %s
-                    """
-                    
-                    songs = execute_query(
-                        query,
-                        (
-                            user_id,
-                            params['valence'][0], params['valence'][1],
-                            params['energy'][0], params['energy'][1],
-                            params['tempo'][0], params['tempo'][1],
-                            limit
-                        ),
-                        fetch=True
-                    )
+                query = """
+                    SELECT s.* FROM songs s
+                    INNER JOIN user_songs us ON s.song_id = us.song_id
+                    INNER JOIN users u ON us.user_id = u.user_id
+                    WHERE u.spotify_id = %s
+                    AND s.valence BETWEEN %s AND %s
+                    AND s.energy BETWEEN %s AND %s
+                    AND s.tempo BETWEEN %s AND %s
+                    AND s.valence IS NOT NULL
+                    AND s.energy IS NOT NULL
+                    AND s.tempo IS NOT NULL
+                    ORDER BY RAND()
+                    LIMIT %s
+                """
+                
+                songs = execute_query(
+                    query,
+                    (
+                        user_id,
+                        params['valence'][0], params['valence'][1],
+                        params['energy'][0], params['energy'][1],
+                        params['tempo'][0], params['tempo'][1],
+                        limit
+                    ),
+                    fetch=True
+                )
             else:
                 # Fallback to global songs if user_id not provided (for backward compatibility)
-                # Exclude recently played songs AND songs without audio features
-                if self.recently_played_tracks:
-                    placeholders = ','.join(['%s'] * len(self.recently_played_tracks))
-                    query = f"""
-                        SELECT * FROM songs
-                        WHERE valence BETWEEN %s AND %s
-                        AND energy BETWEEN %s AND %s
-                        AND tempo BETWEEN %s AND %s
-                        AND valence IS NOT NULL
-                        AND energy IS NOT NULL
-                        AND tempo IS NOT NULL
-                        AND spotify_song_id NOT IN ({placeholders})
-                        ORDER BY RAND()
-                        LIMIT %s
-                    """
-                    
-                    songs = execute_query(
-                        query,
-                        (
-                            params['valence'][0], params['valence'][1],
-                            params['energy'][0], params['energy'][1],
-                            params['tempo'][0], params['tempo'][1],
-                            *self.recently_played_tracks,
-                            limit
-                        ),
-                        fetch=True
-                    )
-                else:
-                    # No recently played tracks yet
-                    query = """
-                        SELECT * FROM songs
-                        WHERE valence BETWEEN %s AND %s
-                        AND energy BETWEEN %s AND %s
-                        AND tempo BETWEEN %s AND %s
-                        AND valence IS NOT NULL
-                        AND energy IS NOT NULL
-                        AND tempo IS NOT NULL
-                        ORDER BY RAND()
-                        LIMIT %s
-                    """
-                    
-                    songs = execute_query(
-                        query,
-                        (
-                            params['valence'][0], params['valence'][1],
-                            params['energy'][0], params['energy'][1],
-                            params['tempo'][0], params['tempo'][1],
-                            limit
-                        ),
-                        fetch=True
-                    )
+                query = """
+                    SELECT * FROM songs
+                    WHERE valence BETWEEN %s AND %s
+                    AND energy BETWEEN %s AND %s
+                    AND tempo BETWEEN %s AND %s
+                    AND valence IS NOT NULL
+                    AND energy IS NOT NULL
+                    AND tempo IS NOT NULL
+                    ORDER BY RAND()
+                    LIMIT %s
+                """
+                
+                songs = execute_query(
+                    query,
+                    (
+                        params['valence'][0], params['valence'][1],
+                        params['energy'][0], params['energy'][1],
+                        params['tempo'][0], params['tempo'][1],
+                        limit
+                    ),
+                    fetch=True
+                )
 
-            # Track these songs to avoid repeating
-            if songs:
-                for song in songs:
-                    self.recently_played_tracks.append(song['spotify_song_id'])
-                    # Keep only last 20 songs in memory
-                    if len(self.recently_played_tracks) > 20:
-                        self.recently_played_tracks.pop(0)
-
+            # No tracking of played songs - all songs available on next request
             return songs
+            
         except Exception as e:
             print(f"[ERROR] Error fetching songs for mood: {e}")
             return []

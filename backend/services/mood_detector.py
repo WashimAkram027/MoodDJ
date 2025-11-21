@@ -51,7 +51,7 @@ LBROW_MID3 = 296
 LBROW_OUTER = 336
 
 # ------------- Configuration -------------
-WIN = 5  # Number of frames to collect for voting
+WIN = 3  # Number of frames to collect for voting
 SMILE_WIDTH_MIN = 0.54  # Threshold for smile detection
 
 
