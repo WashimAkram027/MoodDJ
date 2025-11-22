@@ -7,14 +7,15 @@ import MoodDisplay from '../components/MoodDisplay/MoodDisplay';
 import MusicPlayer from '../components/MusicPlayer/MusicPlayer';
 import { AuthContext } from '../App';
 import { musicService } from '../services/musicService';
+import useStore from '../store/useStore';  // ✅ ADDED
 
 function DashboardPage() {
   const navigate = useNavigate();
   const { isAuthenticated, user, authLoading } = useContext(AuthContext);
+  const { isDetecting } = useStore();  // ✅ ADDED - Get camera state from store
 
-  // You can connect these to your actual state management (Zustand)
+  // Connection status
   const [isConnected, setIsConnected] = useState(true);
-  const [cameraActive, setCameraActive] = useState(false);
 
   // Sync status state
   const [syncStatus, setSyncStatus] = useState(null);
@@ -161,10 +162,10 @@ function DashboardPage() {
               sx={{ bgcolor: isConnected ? '#4caf50' : '#f44336', color: 'white', fontWeight: 600 }}
             />
             <Chip
-              label={cameraActive ? "✓ Camera Active" : "Camera Inactive"}
-              color={cameraActive ? "success" : "default"}
+              label={isDetecting ? "✓ Camera Active" : "Camera Inactive"}  // ✅ CHANGED
+              color={isDetecting ? "success" : "default"}  // ✅ CHANGED
               size="small"
-              sx={{ bgcolor: cameraActive ? '#4caf50' : '#757575', color: 'white', fontWeight: 600 }}
+              sx={{ bgcolor: isDetecting ? '#4caf50' : '#757575', color: 'white', fontWeight: 600 }}  // ✅ CHANGED
             />
             <Chip
               label="✓ Spotify Connected"
@@ -357,7 +358,7 @@ function DashboardPage() {
                 </Typography>
               </Box>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                📸 Your facial expressions are analyzed every 5 seconds to detect your mood
+                📸 Your facial expressions are analyzed every 3 seconds to detect your mood
               </Typography>
               <VideoFeed />
             </Paper>
