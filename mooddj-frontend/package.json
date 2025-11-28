@@ -14,7 +14,6 @@
     "axios": "^1.12.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router-dom": "^7.9.4",
     "react-scripts": "5.0.1",
     "react-webcam": "^7.2.0",
     "recharts": "^3.2.1",
@@ -45,5 +44,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "react-router-dom": "^6.30.2"
   }
 }
