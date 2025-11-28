@@ -1,0 +1,40 @@
+================================
+MOODDJ BACKEND TEST COMMANDS
+================================
+
+ACTIVATE VENV (REQUIRED FIRST):
+venv\Scripts\activate
+
+Also be in backend directory
+
+RUN ALL TESTS:
+python -m pytest tests/ -v
+
+RUN INDIVIDUAL FILES:
+python -m pytest tests/test_app.py -v
+python -m pytest tests/test_audio_features_service.py -v
+python -m pytest tests/test_auth_routes.py -v
+python -m pytest tests/test_database.py -v
+python -m pytest tests/test_mood_detector.py -v
+python -m pytest tests/test_mood_routes.py -v
+python -m pytest tests/test_music_routes.py -v
+python -m pytest tests/test_spotify_service.py -v
+
+RUN SPECIFIC TEST:
+python -m pytest tests/test_app.py::TestApp::test_health_endpoint -v
+
+WITH COVERAGE:
+python -m pytest tests/ --cov --cov-report=html
+
+USEFUL OPTIONS:
+python -m pytest tests/ -v -x              # Stop at first failure
+python -m pytest tests/ -v -s              # Show print statements
+python -m pytest tests/ -v --lf            # Run only failed tests
+python -m pytest tests/ -v -n auto         # Parallel execution
+python -m pytest tests/ -v --durations=10  # Show slowest tests
+
+DEACTIVATE VENV:
+deactivate
+
+EXPECTED: 46 tests passing ✓
+================================
