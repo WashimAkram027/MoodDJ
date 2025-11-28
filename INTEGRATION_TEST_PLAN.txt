@@ -1,0 +1,698 @@
+================================================================================
+                    MOODDJ INTEGRATION TEST PLAN
+================================================================================
+
+PROJECT: MoodDJ - AI-Powered Mood Detection Music Player
+AUTHORS: Jeremias Peralta, Washim Akram
+DATE: November 27, 2025
+
+================================================================================
+                         INTEGRATION APPROACH
+================================================================================
+
+APPROACH SELECTED: Bottom-Up Integration Testing
+
+DEFINITION:
+Bottom-up integration testing starts with testing the lowest-level modules
+first (database, external APIs), then progressively integrates higher-level
+modules (services, routes, frontend) that depend on the lower layers.
+
+================================================================================
+                    WHY BOTTOM-UP FOR MOODDJ?
+================================================================================
+
+JUSTIFICATION:
+
+MoodDJ uses a layered architecture where each layer depends on the layers below
+it. The dependency structure is:
+
+    Frontend (React)
+        ↓
+    API Routes (Flask)
+        ↓
+    Services (Mood Detector, Spotify, Audio Features)
+        ↓
+    External APIs & Database (MySQL, Spotify API, RapidAPI)
+
+REASONS FOR BOTTOM-UP APPROACH:
+
+1. FOUNDATION FIRST
+   - Database is the foundation - all modules store/retrieve data
+   - If database fails, everything fails
+   - Must verify database works before building on it
+
+2. DEPENDENCY CHAIN
+   - Services cannot work without database
+   - Routes cannot work without services
+   - Frontend cannot work without routes
+   - Bottom-up follows natural dependency flow
+
+3. EFFICIENT DEBUGGING
+   - When Phase 5 fails, we know Phases 1-4 work
+   - Isolates failures to specific integration point
+   - Reduces debugging time significantly
+
+4. REALISTIC DEVELOPMENT FLOW
+   - Matches how the system was actually built
+   - Database → Services → Routes → Frontend
+   - Natural progression of development
+
+5. EXTERNAL API VALIDATION
+   - Spotify and RapidAPI must work before services use them
+   - Early validation of third-party integrations
+   - Catches API issues before building dependent features
+
+COMPARISON WITH TOP-DOWN:
+
+Top-down would start with frontend and work backward, but this doesn't work
+well for MoodDJ because:
+   ✗ Frontend needs backend endpoints already working
+   ✗ Can't test UI without API responses
+   ✗ Would require extensive mocking of entire backend
+   ✗ Doesn't match development workflow
+
+================================================================================
+                    INTEGRATION TEST PHASES (9 PHASES)
+================================================================================
+
+PHASE 1: DATABASE MODULE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MODULES INTEGRATED:
+    - config/database.py (MySQL connection and query execution)
+
+WHAT THIS TESTS:
+    - MySQL database connection
+    - CRUD operations (Create, Read, Update, Delete)
+    - Transaction handling
+    - Connection pooling
+    - SQL injection prevention
+
+TEST FLOW:
+    1. Establish connection to MySQL database
+    2. INSERT test song into songs table
+    3. SELECT the song to verify insertion
+    4. UPDATE song data
+    5. DELETE the song
+    6. Verify deletion successful
+
+WHY FIRST:
+    - Database is the foundation of the entire application
+    - All other modules (services, routes) depend on database
+    - User data, songs, moods, sessions all stored here
+    - If database fails, nothing else can work
+
+EXPECTED RESULT:
+    ✓ Connection established successfully
+    ✓ All CRUD operations complete without errors
+    ✓ Data persists correctly
+    ✓ SQL injection attempts blocked
+
+DEPENDENCIES:
+    - None (this is the foundation)
+
+WHAT BREAKS IF THIS FAILS:
+    - Cannot store detected moods
+    - Cannot sync Spotify library
+    - Cannot log user sessions
+    - Cannot retrieve song recommendations
+
+
+PHASE 2: EXTERNAL API - RAPIDAPI (AUDIO FEATURES)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MODULES INTEGRATED:
+    - services/audio_features_service.py ↔ RapidAPI SoundNet
+
+WHAT THIS TESTS:
+    - RapidAPI authentication
+    - Audio features retrieval (valence, energy, tempo)
+    - Response parsing
+    - Rate limit handling (429 errors)
+    - Error handling for missing tracks
+
+TEST FLOW:
+    1. Call get_audio_features() with valid Spotify track ID
+    2. Verify API request sent with correct headers
+    3. Receive response with audio features
+    4. Parse valence, energy, tempo from response
+    5. Verify all values in valid ranges (0-1 for valence/energy)
+    6. Test rate limit handling with multiple rapid requests
+
+WHY SECOND:
+    - Needed before Spotify service can classify songs by mood
+    - Independent of database (can test separately)
+    - External dependency that must work before services use it
+    - Audio features determine song mood classification
+
+EXPECTED RESULT:
+    ✓ API authentication successful
+    ✓ Audio features retrieved (valence, energy, tempo)
+    ✓ Rate limits handled gracefully
+    ✓ Missing tracks return None (not crash)
+
+DEPENDENCIES:
+    - None (external API, independent)
+
+WHAT BREAKS IF THIS FAILS:
+    - Cannot classify songs as happy/angry/neutral
+    - Library sync incomplete (songs without mood data)
+    - Recommendations less accurate
+
+
+PHASE 3: EXTERNAL API - SPOTIFY OAUTH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MODULES INTEGRATED:
+    - services/spotify_service.py ↔ Spotify Web API (OAuth 2.0)
+
+WHAT THIS TESTS:
+    - OAuth authorization URL generation
+    - Authorization code exchange for access token
+    - Token refresh mechanism
+    - Token storage and retrieval
+    - Spotify API authentication
+
+TEST FLOW:
+    1. Generate Spotify OAuth URL with correct scopes
+    2. Simulate user authorization (get authorization code)
+    3. Exchange code for access token and refresh token
+    4. Verify tokens stored in session
+    5. Test token refresh when expired
+    6. Verify API calls authenticated with token
+
+WHY THIRD:
+    - Must authenticate before accessing user's Spotify data
+    - Independent of database (can test separately)
+    - Required for all Spotify API calls
+    - Security critical - must work correctly
+
+EXPECTED RESULT:
+    ✓ OAuth URL generated with correct scopes
+    ✓ Code exchanged for tokens successfully
+    ✓ Tokens stored securely in session
+    ✓ Token refresh works when expired
+    ✓ API calls authenticated properly
+
+DEPENDENCIES:
+    - None (external API, independent)
+
+WHAT BREAKS IF THIS FAILS:
+    - Cannot access user's Spotify account
+    - Cannot sync library
+    - Cannot play music
+    - Cannot get user profile
+
+
+PHASE 4: MOOD DETECTOR + DATABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MODULES INTEGRATED:
+    - services/mood_detector.py → config/database.py
+
+WHAT THIS TESTS:
+    - Mood detection from camera image
+    - Mood result persistence to database
+    - Mood history retrieval
+    - Data flow from detection to storage
+
+TEST FLOW:
+    1. Provide test image with happy face to mood detector
+    2. Detect mood (expected: "happy" with ~0.85 confidence)
+    3. Log mood to mood_sessions table with INSERT query
+    4. Verify database entry created with correct data
+    5. Retrieve mood history from database with SELECT query
+    6. Verify retrieved data matches detected mood
+
+WHY FOURTH:
+    - Combines first working service (mood detector) with database
+    - Validates data persistence works
+    - First test of service → database integration
+    - Mood logging is critical feature
+
+EXPECTED RESULT:
+    ✓ Mood detected from image correctly
+    ✓ Mood saved to database with timestamp
+    ✓ Mood history retrieved successfully
+    ✓ Data integrity maintained
+
+DEPENDENCIES:
+    - Phase 1 (Database) must pass
+    - Mood detector service working
+
+WHAT BREAKS IF THIS FAILS:
+    - Cannot track mood over time
+    - Cannot show mood history to users
+    - Cannot generate mood statistics
+
+
+PHASE 5: SPOTIFY SERVICE + AUDIO FEATURES + DATABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MODULES INTEGRATED:
+    - services/spotify_service.py → 
+      services/audio_features_service.py → 
+      config/database.py
+
+WHAT THIS TESTS:
+    - Library sync from Spotify to database
+    - Audio features enrichment for each song
+    - Mood classification based on audio features
+    - Multi-service data pipeline
+    - Batch processing of songs
+
+TEST FLOW:
+    1. Fetch 5 tracks from user's Spotify library
+    2. For each track:
+       a. Get audio features from RapidAPI (Phase 2)
+       b. Classify mood based on valence/energy
+       c. Store in database with all metadata
+    3. Verify all 5 songs stored in database
+    4. Verify audio features stored correctly
+    5. Verify mood classification applied (happy/angry/neutral)
+    6. Test error handling for tracks without features
+
+WHY FIFTH:
+    - Most complex service integration (3 modules)
+    - Combines external APIs with database
+    - Critical for song recommendation feature
+    - Tests complete data pipeline
+
+EXPECTED RESULT:
+    ✓ Spotify tracks fetched successfully
+    ✓ Audio features retrieved for each track
+    ✓ Songs stored with complete metadata
+    ✓ Mood classification accurate
+    ✓ Error handling works for missing features
+
+DEPENDENCIES:
+    - Phase 1 (Database) must pass
+    - Phase 2 (Audio Features API) must pass
+    - Phase 3 (Spotify OAuth) must pass
+
+WHAT BREAKS IF THIS FAILS:
+    - Cannot sync user's library
+    - Cannot recommend songs
+    - No songs available for playback
+
+
+PHASE 6: MOOD-BASED MUSIC RECOMMENDATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MODULES INTEGRATED:
+    - services/spotify_service.py ↔ config/database.py
+    - Mood input → Database query → Song filtering
+
+WHAT THIS TESTS:
+    - Mood-to-music matching algorithm
+    - Database queries filter songs by mood
+    - Song randomization for variety
+    - Recommendation accuracy
+
+TEST FLOW:
+    1. Pre-populate database with songs of various moods:
+       - 10 happy songs (valence > 0.6)
+       - 10 angry songs (valence < 0.4, energy > 0.6)
+       - 10 neutral songs (balanced)
+    2. Request recommendations for "happy" mood
+    3. Verify all returned songs have valence > 0.6
+    4. Request recommendations for "angry" mood
+    5. Verify all returned songs have valence < 0.4 and energy > 0.6
+    6. Request recommendations for "neutral" mood
+    7. Verify returned songs have balanced features
+    8. Test randomization (same request returns different order)
+
+WHY SIXTH:
+    - Core recommendation algorithm validation
+    - Tests the "DJ" in MoodDJ
+    - Validates mood classification logic
+    - Critical user-facing feature
+
+EXPECTED RESULT:
+    ✓ Happy songs match happy mood criteria
+    ✓ Angry songs match angry mood criteria
+    ✓ Neutral songs match neutral mood criteria
+    ✓ Randomization provides variety
+    ✓ Filtering accurate and fast
+
+DEPENDENCIES:
+    - Phase 1 (Database) must pass
+    - Phase 5 (Library sync) must pass
+
+WHAT BREAKS IF THIS FAILS:
+    - Wrong songs play for mood
+    - User experience degraded
+    - Mood detection useless without proper music
+
+
+PHASE 7: AUTH ROUTES → SPOTIFY SERVICE → DATABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MODULES INTEGRATED:
+    - routes/auth_routes.py → 
+      services/spotify_service.py → 
+      config/database.py
+
+WHAT THIS TESTS:
+    - Complete authentication flow through API
+    - Session management
+    - User profile storage
+    - OAuth callback handling
+
+TEST FLOW:
+    1. GET /api/auth/login → receive Spotify auth URL
+    2. Simulate OAuth callback with authorization code
+    3. POST /api/auth/callback → exchange code for tokens
+    4. Verify session created with user data
+    5. Verify user profile stored in database
+    6. GET /api/auth/status → verify authenticated state
+    7. POST /api/auth/logout → clear session
+    8. Verify session cleared from database
+
+WHY SEVENTH:
+    - First route integration test
+    - Users must authenticate before other features
+    - Tests API layer with services and database
+    - Critical for app security
+
+EXPECTED RESULT:
+    ✓ Auth URL generated correctly
+    ✓ Tokens exchanged successfully
+    ✓ Session created and persisted
+    ✓ User stored in database
+    ✓ Auth status accurate
+    ✓ Logout clears session
+
+DEPENDENCIES:
+    - Phase 1 (Database) must pass
+    - Phase 3 (Spotify OAuth) must pass
+
+WHAT BREAKS IF THIS FAILS:
+    - Users cannot log in
+    - Cannot access Spotify account
+    - Cannot use any features
+
+
+PHASE 8: MOOD ROUTES → MOOD DETECTOR → DATABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MODULES INTEGRATED:
+    - routes/mood_routes.py → 
+      services/mood_detector.py → 
+      config/database.py
+
+WHAT THIS TESTS:
+    - Mood detection API endpoints
+    - Image processing through API
+    - Mood logging via API
+    - History and statistics endpoints
+
+TEST FLOW:
+    1. POST /api/mood/detect with base64 image
+    2. Verify mood detected ("happy" with confidence)
+    3. POST /api/mood/log with detected mood
+    4. Verify mood saved to database
+    5. GET /api/mood/history → retrieve mood history
+    6. Verify logged mood appears in history
+    7. GET /api/mood/stats → get mood statistics
+    8. Verify statistics calculated correctly
+    9. POST /api/mood/reset → reset detector state
+
+WHY EIGHTH:
+    - Mood detection accessible via REST API
+    - Frontend can now detect moods
+    - Tests complete mood workflow
+    - API layer for core feature
+
+EXPECTED RESULT:
+    ✓ Image processed successfully
+    ✓ Mood detected accurately
+    ✓ Mood logged to database
+    ✓ History retrieved correctly
+    ✓ Statistics calculated properly
+    ✓ Reset works
+
+DEPENDENCIES:
+    - Phase 1 (Database) must pass
+    - Phase 4 (Mood Detector + DB) must pass
+
+WHAT BREAKS IF THIS FAILS:
+    - Frontend cannot detect moods
+    - Cannot log mood data
+    - No mood history or stats
+
+
+PHASE 9: MUSIC ROUTES → SPOTIFY SERVICE → DATABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MODULES INTEGRATED:
+    - routes/music_routes.py → 
+      services/spotify_service.py → 
+      config/database.py
+
+WHAT THIS TESTS:
+    - Music recommendation endpoints
+    - Playback control endpoints
+    - Library sync endpoints
+    - Complete music workflow
+
+TEST FLOW:
+    1. User authenticated (Phase 7)
+    2. POST /api/music/sync → sync 10 tracks from Spotify
+    3. Verify songs stored in database with audio features
+    4. POST /api/music/recommend with mood="happy"
+    5. Verify recommendations match mood criteria
+    6. Verify songs from user's library
+    7. POST /api/music/play with track_id
+    8. Verify playback initiated on Spotify
+    9. GET /api/music/current → verify playback state
+    10. Verify "Now Playing" data correct
+
+WHY NINTH:
+    - Completes backend integration
+    - All routes working with all services
+    - Tests complete music features
+    - Ready for frontend integration
+
+EXPECTED RESULT:
+    ✓ Library synced successfully
+    ✓ Recommendations accurate
+    ✓ Playback works
+    ✓ Current track retrieved
+    ✓ End-to-end music flow works
+
+DEPENDENCIES:
+    - Phase 1 (Database) must pass
+    - Phase 3 (Spotify OAuth) must pass
+    - Phase 5 (Library sync) must pass
+    - Phase 6 (Recommendations) must pass
+    - Phase 7 (Authentication) must pass
+
+WHAT BREAKS IF THIS FAILS:
+    - Cannot play music
+    - Recommendations don't work
+    - Core app feature broken
+
+================================================================================
+                        INTEGRATION ORDER SUMMARY
+================================================================================
+
+BOTTOM-UP PROGRESSION:
+
+Layer 1 - Foundation:
+    Phase 1: Database
+    Phase 2: RapidAPI
+    Phase 3: Spotify OAuth
+
+Layer 2 - Services:
+    Phase 4: Mood Detector + Database
+    Phase 5: Spotify Service + Audio Features + Database
+    Phase 6: Mood Recommendations
+
+Layer 3 - API Routes:
+    Phase 7: Auth Routes + Services + Database
+    Phase 8: Mood Routes + Services + Database
+    Phase 9: Music Routes + Services + Database
+
+DEPENDENCY CHAIN:
+
+    Phase 1 (Database)
+        ↓
+    Phase 2, 3 (External APIs - independent of each other)
+        ↓
+    Phase 4 (Mood + DB), Phase 5 (Spotify + Audio + DB)
+        ↓
+    Phase 6 (Recommendations)
+        ↓
+    Phase 7 (Auth Routes), Phase 8 (Mood Routes), Phase 9 (Music Routes)
+
+================================================================================
+                      WHY THIS ORDER MAKES SENSE
+================================================================================
+
+1. FOUNDATION FIRST (Phases 1-3)
+   - Database must work before anything stores data
+   - External APIs must work before services use them
+   - Independent components tested in isolation
+
+2. SERVICES NEXT (Phases 4-6)
+   - Services combine foundation components
+   - Each service builds on working database
+   - Mood detection and music features validated
+
+3. ROUTES LAST (Phases 7-9)
+   - Routes expose services to frontend
+   - All backend logic working before API layer
+   - Frontend can now connect
+
+4. PROGRESSIVE COMPLEXITY
+   - Phase 1: Simple (just database)
+   - Phase 5: Complex (3 modules integrated)
+   - Phase 9: Most complex (entire backend)
+
+5. EFFICIENT DEBUGGING
+   - If Phase 7 fails, we know Phases 1-6 work
+   - Narrows failure to specific integration point
+   - Saves debugging time
+
+================================================================================
+                      ADVANTAGES OF BOTTOM-UP
+================================================================================
+
+✓ FOUNDATION VALIDATED FIRST
+  - Critical components (database, APIs) tested early
+  - Catches infrastructure issues immediately
+  - Builds confidence in system stability
+
+✓ NATURAL DEPENDENCY FLOW
+  - Tests in same order as development
+  - Follows actual module dependencies
+  - Matches how system was built
+
+✓ EFFICIENT FAILURE ISOLATION
+  - Failures isolated to current integration point
+  - Lower layers already verified
+  - Faster bug identification
+
+✓ INCREMENTAL COMPLEXITY
+  - Starts simple, gets progressively complex
+  - Each phase adds one integration point
+  - Manageable testing effort
+
+✓ REALISTIC TESTING
+  - Tests real database, real APIs
+  - Not heavily mocked
+  - Confidence in production readiness
+
+================================================================================
+                    DISADVANTAGES OF BOTTOM-UP
+================================================================================
+
+✗ USER WORKFLOW TESTED LATE
+  - Complete user journey not tested until Phase 9
+  - UI/UX issues discovered late
+  - Would need additional end-to-end tests
+
+✗ REQUIRES LOWER LAYERS READY
+  - Cannot test routes until services ready
+  - Cannot test services until database ready
+  - Sequential, not parallel
+
+✗ INTERFACE ISSUES LATE
+  - API contract mismatches found late
+  - Frontend expectations vs backend reality
+  - Would need integration with frontend team
+
+MITIGATION:
+  - Add end-to-end tests after Phase 9
+  - Coordinate with frontend on API contracts
+  - Validate user workflows separately
+
+================================================================================
+                    COMPARISON: WHY NOT TOP-DOWN?
+================================================================================
+
+TOP-DOWN APPROACH WOULD BE:
+    Frontend Components
+        ↓
+    API Routes
+        ↓
+    Services
+        ↓
+    Database & External APIs
+
+WHY TOP-DOWN DOESN'T WORK FOR MOODDJ:
+
+✗ Frontend needs working backend
+  - Cannot test UI without real API responses
+  - Would require extensive mocking
+
+✗ Routes need working services
+  - Cannot test endpoints without business logic
+  - Mocking hides integration bugs
+
+✗ Services need working database
+  - Cannot store/retrieve without database
+  - Mocking defeats purpose of integration tests
+
+✗ Opposite of development flow
+  - Built database → services → routes → frontend
+  - Testing in reverse order is awkward
+
+CONCLUSION:
+Bottom-up is the natural, efficient choice for MoodDJ's architecture.
+
+================================================================================
+                         TESTING COMPLETION CRITERIA
+================================================================================
+
+PHASE CONSIDERED COMPLETE WHEN:
+
+✓ All integration tests pass
+✓ Data flows correctly between modules
+✓ Error handling works across boundaries
+✓ Performance acceptable (response times)
+✓ No memory leaks or resource issues
+✓ Logging captures integration events
+✓ Ready for next phase
+
+OVERALL INTEGRATION COMPLETE WHEN:
+
+✓ All 9 phases passed
+✓ Backend fully integrated
+✓ Ready for frontend integration
+✓ Performance benchmarks met
+✓ Error scenarios handled
+✓ System stable under load
+
+================================================================================
+                              CONCLUSION
+================================================================================
+
+APPROACH: Bottom-Up Integration Testing
+
+JUSTIFICATION:
+MoodDJ's layered architecture naturally supports bottom-up integration.
+Database and external APIs form the foundation, services build on them,
+and routes expose everything to the frontend. Testing in this order
+validates each layer before building the next, leading to efficient
+debugging and high confidence in system stability.
+
+TOTAL PHASES: 9
+
+ORDER OF INTEGRATION:
+1. Database → 2. RapidAPI → 3. Spotify OAuth →
+4. Mood Detector + DB → 5. Spotify + Audio + DB → 6. Recommendations →
+7. Auth Routes → 8. Mood Routes → 9. Music Routes
+
+EXPECTED OUTCOME:
+Fully integrated backend ready for frontend connection, with all
+integration points validated and stable.
+
+================================================================================
+                              END OF PLAN
+================================================================================
+
+Last Updated: November 27, 2025
+MoodDJ Capstone Project
+Authors: Jeremias Peralta, Washim Akram
