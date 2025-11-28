@@ -1,0 +1,26 @@
+================================
+MOODDJ FRONTEND TEST COMMANDS
+================================
+
+No VENV required just be in mooddj-frontend
+
+RUN ALL TESTS:
+npm test -- --watchAll=false
+
+RUN ONE FILE:
+npm test -- authService.test.js --watchAll=false
+npm test -- moodService.test.js --watchAll=false
+npm test -- musicService.test.js --watchAll=false
+npm test -- useStore.test.js --watchAll=false
+npm test -- VideoFeed.test.js --watchAll=false
+npm test -- MusicPlayer.test.js --watchAll=false
+
+WITH COVERAGE:
+npm test -- --coverage --watchAll=false
+
+INTERACTIVE MODE:
+npm test
+(press 'q' to quit)
+
+EXPECTED: 15 tests passing ✓
+================================
