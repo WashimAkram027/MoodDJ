@@ -31,16 +31,157 @@ MoodDJ is an intelligent web application that uses computer vision to detect you
 - AWS EC2 (Production)
 - AWS RDS MySQL
 
+## Important: Spotify Account Access
+
+Due to Spotify's API development mode limitations, **new users must be manually added** to the Spotify Developer Dashboard before they can use MoodDJ.
+
+### For Testers/Evaluators
+
+A **test Spotify account** has been set up for evaluation purposes. The credentials and Spotify ID are available in the **User Guide** document provided separately with this project.
+
+### Adding New Users
+
+If you need to add your own Spotify account:
+1. The developer must add your Spotify email to the app's user list in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+2. Contact the developer with your Spotify account email to be whitelisted
+3. Once added, you can authenticate and sync your library
+
+> **Note**: This limitation exists because the app is in "Development Mode". In production with an extended quota, this manual step would not be required.
+
 ## Quick Start
 
 ### Prerequisites
 
-- Docker & Docker Compose
-- Spotify Premium Account
+- Python 3.10+ (for local development)
+- Node.js 18+ and npm
+- MySQL 8.0+ (or use developer's AWS RDS)
+- Spotify Premium Account (or use provided test account)
 - RapidAPI Account (for audio features)
-- MySQL 8.0+ (for local development without Docker)
+- Docker & Docker Compose (optional, for containerized deployment)
 
-### Option 1: Docker Deployment (Recommended)
+### Option 1: Local Development
+
+This option runs the backend and frontend directly on your machine without Docker.
+
+#### Backend Setup
+
+1. **Navigate to the backend directory**
+   ```bash
+   cd backend
+   ```
+
+2. **Create a Python virtual environment**
+
+   A virtual environment isolates project dependencies from your system Python installation. This is **strongly recommended** to avoid conflicts.
+
+   ```bash
+   # Create the virtual environment
+   python -m venv venv
+   ```
+
+3. **Activate the virtual environment**
+
+   You must activate the venv every time you open a new terminal to work on this project.
+
+   ```bash
+   # Windows (Command Prompt)
+   venv\Scripts\activate
+
+   # Windows (PowerShell)
+   venv\Scripts\Activate.ps1
+
+   # macOS/Linux
+   source venv/bin/activate
+   ```
+
+   When activated, you'll see `(venv)` at the beginning of your command prompt.
+
+4. **Install Python dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+5. **Set up the database**
+
+   Choose one of the following options:
+
+   **Option A: Local MySQL Database**
+
+   Set up your own MySQL instance:
+   ```bash
+   # Create the database
+   mysql -u root -p -e "CREATE DATABASE mooddj;"
+
+   # Import the schema
+   mysql -u root -p mooddj < database_schema.sql
+   ```
+
+   Configure `backend/.env`:
+   ```env
+   DB_HOST=localhost
+   DB_USER=root
+   DB_PASSWORD=your_mysql_password
+   DB_NAME=mooddj
+   DB_PORT=3306
+   ```
+
+   **Option B: Developer's AWS RDS Database**
+
+   Connect to the hosted database (credentials provided in User Guide):
+   ```env
+   DB_HOST=<aws-rds-endpoint-from-user-guide>
+   DB_USER=<username-from-user-guide>
+   DB_PASSWORD=<password-from-user-guide>
+   DB_NAME=mooddj
+   DB_PORT=3306
+   ```
+
+6. **Configure remaining environment variables**
+
+   Complete your `backend/.env` file:
+   ```env
+   SECRET_KEY=your-secret-key-here
+
+   SPOTIFY_CLIENT_ID=your_spotify_client_id
+   SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+   SPOTIFY_REDIRECT_URI=http://127.0.0.1:5000/api/auth/callback
+
+   RAPIDAPI_KEY=your_rapidapi_key
+   RAPIDAPI_HOST=track-analysis.p.rapidapi.com
+
+   FRONTEND_URL=http://127.0.0.1:3000
+   BACKEND_URL=http://127.0.0.1:5000
+   ```
+
+7. **Start the backend server**
+   ```bash
+   python app.py
+   ```
+
+   The backend will run at http://127.0.0.1:5000
+
+#### Frontend Setup
+
+1. **Navigate to the frontend directory** (in a new terminal)
+   ```bash
+   cd mooddj-frontend
+   ```
+
+2. **Install Node.js dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Start the frontend development server**
+   ```bash
+   npm start
+   ```
+
+   The frontend will run at http://127.0.0.1:3000
+
+### Option 2: Docker Deployment
+
+This option uses Docker Compose to run both services in containers.
 
 1. **Clone the repository**
    ```bash
@@ -80,57 +221,14 @@ MoodDJ is an intelligent web application that uses computer vision to detect you
    - Frontend: http://127.0.0.1:3000
    - Backend API: http://127.0.0.1:5000
 
-### Option 2: Local Development
-
-#### Backend Setup
-
-1. **Create virtual environment**
-   ```bash
-   python -m venv venv
-
-   # Windows
-   venv\Scripts\activate
-
-   # macOS/Linux
-   source venv/bin/activate
-   ```
-
-2. **Install dependencies**
-   ```bash
-   cd backend
-   pip install -r requirements.txt
-   ```
-
-3. **Set up database**
-   ```bash
-   mysql -u root -p < database_schema.sql
-   ```
-
-4. **Start backend**
-   ```bash
-   python app.py
-   ```
-
-#### Frontend Setup
-
-1. **Install dependencies**
-   ```bash
-   cd mooddj-frontend
-   npm install
-   ```
-
-2. **Start frontend**
-   ```bash
-   npm start
-   ```
-
 ## Usage
 
 1. Open http://127.0.0.1:3000 in your browser
 2. Click "Connect with Spotify" to authenticate
-3. Sync your Spotify library from the dashboard
-4. Click "Start Detection" to enable mood detection
-5. Music recommendations will update based on your detected mood
+3. Sync your Spotify library from the dashboard (click "Sync Library Now")
+4. Click "Start Detection" to enable mood detection via webcam
+5. Music recommendations will automatically update based on your detected mood
+6. Use the play/pause controls to control Spotify playback
 
 ## Project Structure
 
@@ -187,16 +285,20 @@ MoodDJ/
 - `GET /api/mood/history` - Get mood history
 
 ### Music
-- `GET /api/music/recommendations` - Get recommendations by mood
+- `POST /api/music/recommend` - Get recommendations by mood
 - `POST /api/music/play` - Play track on Spotify
+- `POST /api/music/pause` - Pause playback
+- `POST /api/music/resume` - Resume playback
 - `POST /api/music/sync` - Sync user's Spotify library
 - `GET /api/music/sync/status` - Get sync status
+- `POST /api/music/reset` - Reset synced library
 
 ## Testing
 
 ### Backend Tests
 ```bash
 cd backend
+# Activate venv first
 pytest tests/ -v
 ```
 
@@ -210,7 +312,7 @@ npm test
 
 | Variable | Description |
 |----------|-------------|
-| `DB_HOST` | MySQL host |
+| `DB_HOST` | MySQL host (localhost or AWS RDS endpoint) |
 | `DB_USER` | MySQL username |
 | `DB_PASSWORD` | MySQL password |
 | `DB_NAME` | Database name (default: mooddj) |
@@ -222,11 +324,13 @@ npm test
 
 ## Mood Detection
 
-MoodDJ detects four moods based on facial expressions:
-- **Happy** - High valence, high energy music
-- **Sad** - Low valence, low energy music
-- **Angry** - Low valence, high energy music
-- **Neutral** - Medium valence, medium energy music
+MoodDJ uses a majority voting algorithm to detect three moods based on facial expressions:
+
+- **Happy** - Wide smile detected → High valence, high energy music
+- **Angry** - Furrowed brows, squinting eyes → Low valence, high energy music
+- **Neutral** - Relaxed expression → Medium valence, medium energy music
+
+The mood is determined by analyzing facial landmarks every 3 seconds using MediaPipe, with a 3-frame majority voting system for stability.
 
 ## Contributors
 
