@@ -368,17 +368,14 @@ MoodDJ uses a majority voting algorithm to detect three moods based on facial ex
 - **Neutral** - Relaxed expression → Medium valence, medium energy music
 
 The mood is determined by analyzing facial landmarks every 3 seconds using MediaPipe, with a 3-frame majority voting system for stability.
-MoodDJ uses a majority voting algorithm to detect three moods based on facial expressions:
-
-- **Happy** - Wide smile detected → High valence, high energy music
-- **Angry** - Furrowed brows, squinting eyes → Low valence, high energy music
-- **Neutral** - Relaxed expression → Medium valence, medium energy music
-
-The mood is determined by analyzing facial landmarks every 3 seconds using MediaPipe, with a 3-frame majority voting system for stability.
 
 ## Contributors
 
-- Washim Akram - Lead Developer
+- Washim Akram
+- Jeremias Peralta
+- Tyler Wilkins
+- Alexis Puentes
+- Antonio Antonio
 
 ## License
 
