@@ -378,7 +378,11 @@ The mood is determined by analyzing facial landmarks every 3 seconds using Media
 
 ## Contributors
 
-- Washim Akram - Lead Developer
+- Washim Akram
+- Jeremias Peralta
+- Tyler Wilkins
+- Alexis Puentes
+- Antonio Antonio
 
 ## License
 
