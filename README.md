@@ -31,32 +31,26 @@ MoodDJ is an intelligent web application that uses computer vision to detect you
 - AWS EC2 (Production)
 - AWS RDS MySQL
 
-## Important: Spotify Account Access
+## Important Notice for Testers/Evaluators
+
+> **🔑 Pre-configured Environment Files Included**
+>
+> For ease of testing and evaluation, the `.env` files containing all necessary credentials (database, Spotify API, RapidAPI) are **included in this repository**. This means:
+> - **No environment setup required** - All API keys and database credentials are pre-configured
+> - **No database setup required** - The app connects to the developer's AWS RDS database
+> - **Ready to run** - Simply clone, install dependencies, and start the application
+>
+> ⚠️ **These credentials will be removed after January 2026** for security purposes.
+
+### Test Spotify Account
+
+A **test Spotify account** has been set up for evaluation purposes. The credentials are available in the **User Guide** document provided separately with this project.
+
+## Spotify Account Access
 
 Due to Spotify's API development mode limitations, **new users must be manually added** to the Spotify Developer Dashboard before they can use MoodDJ.
 
-### For Testers/Evaluators
-
-A **test Spotify account** has been set up for evaluation purposes. The credentials and Spotify ID are available in the **User Guide** document provided separately with this project.
-
-### Adding New Users
-
-If you need to add your own Spotify account:
-1. The developer must add your Spotify email to the app's user list in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
-2. Contact the developer with your Spotify account email to be whitelisted
-3. Once added, you can authenticate and sync your library
-
-> **Note**: This limitation exists because the app is in "Development Mode". In production with an extended quota, this manual step would not be required.
-
-## Important: Spotify Account Access
-
-Due to Spotify's API development mode limitations, **new users must be manually added** to the Spotify Developer Dashboard before they can use MoodDJ.
-
-### For Testers/Evaluators
-
-A **test Spotify account** has been set up for evaluation purposes. The credentials and Spotify ID are available in the **User Guide** document provided separately with this project.
-
-### Adding New Users
+### Adding New Users (Not required for testers)
 
 If you need to add your own Spotify account:
 1. The developer must add your Spotify email to the app's user list in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
@@ -130,6 +124,8 @@ This option runs the backend and frontend directly on your machine without Docke
 
 6. **Set up the database**
 
+   > **📝 Note for Testers:** The `.env` file is already configured to connect to the developer's AWS RDS database. You can skip this step and proceed to step 8.
+
    Choose one of the following options:
 
    **Option A: Local MySQL Database**
@@ -164,6 +160,8 @@ This option runs the backend and frontend directly on your machine without Docke
    ```
 
 7. **Configure remaining environment variables**
+
+   > **📝 Note for Testers:** The `.env` file already contains all required credentials (Spotify API, RapidAPI, database). You can skip this step and proceed to step 8.
 
    Complete your `backend/.env` file:
    ```env
@@ -217,6 +215,8 @@ This option uses Docker Compose to run both services in containers.
    ```
 
 2. **Configure environment variables**
+
+   > **📝 Note for Testers:** The `.env` file is already pre-configured with all credentials. You can skip this step.
 
    Backend (`backend/.env`):
    ```env
