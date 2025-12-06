@@ -48,10 +48,31 @@ If you need to add your own Spotify account:
 
 > **Note**: This limitation exists because the app is in "Development Mode". In production with an extended quota, this manual step would not be required.
 
+## Important: Spotify Account Access
+
+Due to Spotify's API development mode limitations, **new users must be manually added** to the Spotify Developer Dashboard before they can use MoodDJ.
+
+### For Testers/Evaluators
+
+A **test Spotify account** has been set up for evaluation purposes. The credentials and Spotify ID are available in the **User Guide** document provided separately with this project.
+
+### Adding New Users
+
+If you need to add your own Spotify account:
+1. The developer must add your Spotify email to the app's user list in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+2. Contact the developer with your Spotify account email to be whitelisted
+3. Once added, you can authenticate and sync your library
+
+> **Note**: This limitation exists because the app is in "Development Mode". In production with an extended quota, this manual step would not be required.
+
 ## Quick Start
 
 ### Prerequisites
 
+- Python 3.10+ (for local development)
+- Node.js 18+ and npm
+- MySQL 8.0+ (or use developer's AWS RDS)
+- Spotify Premium Account (or use provided test account)
 - Python 3.10+ (for local development)
 - Node.js 18+ and npm
 - MySQL 8.0+ (or use developer's AWS RDS)
@@ -235,6 +256,10 @@ This option uses Docker Compose to run both services in containers.
 4. Click "Start Detection" to enable mood detection via webcam
 5. Music recommendations will automatically update based on your detected mood
 6. Use the play/pause controls to control Spotify playback
+3. Sync your Spotify library from the dashboard (click "Sync Library Now")
+4. Click "Start Detection" to enable mood detection via webcam
+5. Music recommendations will automatically update based on your detected mood
+6. Use the play/pause controls to control Spotify playback
 
 ## Project Structure
 
@@ -292,11 +317,15 @@ MoodDJ/
 
 ### Music
 - `POST /api/music/recommend` - Get recommendations by mood
+- `POST /api/music/recommend` - Get recommendations by mood
 - `POST /api/music/play` - Play track on Spotify
+- `POST /api/music/pause` - Pause playback
+- `POST /api/music/resume` - Resume playback
 - `POST /api/music/pause` - Pause playback
 - `POST /api/music/resume` - Resume playback
 - `POST /api/music/sync` - Sync user's Spotify library
 - `GET /api/music/sync/status` - Get sync status
+- `POST /api/music/reset` - Reset synced library
 - `POST /api/music/reset` - Reset synced library
 
 ## Testing
@@ -304,6 +333,7 @@ MoodDJ/
 ### Backend Tests
 ```bash
 cd backend
+# Activate venv first
 # Activate venv first
 pytest tests/ -v
 ```
@@ -319,6 +349,7 @@ npm test
 | Variable | Description |
 |----------|-------------|
 | `DB_HOST` | MySQL host (localhost or AWS RDS endpoint) |
+| `DB_HOST` | MySQL host (localhost or AWS RDS endpoint) |
 | `DB_USER` | MySQL username |
 | `DB_PASSWORD` | MySQL password |
 | `DB_NAME` | Database name (default: mooddj) |
@@ -330,6 +361,13 @@ npm test
 
 ## Mood Detection
 
+MoodDJ uses a majority voting algorithm to detect three moods based on facial expressions:
+
+- **Happy** - Wide smile detected → High valence, high energy music
+- **Angry** - Furrowed brows, squinting eyes → Low valence, high energy music
+- **Neutral** - Relaxed expression → Medium valence, medium energy music
+
+The mood is determined by analyzing facial landmarks every 3 seconds using MediaPipe, with a 3-frame majority voting system for stability.
 MoodDJ uses a majority voting algorithm to detect three moods based on facial expressions:
 
 - **Happy** - Wide smile detected → High valence, high energy music
