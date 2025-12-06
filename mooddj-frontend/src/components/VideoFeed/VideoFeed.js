@@ -107,8 +107,8 @@ function VideoFeed() {
       <Box
         sx={{
           position: 'relative',
-          width: '50%',
-          aspectRatio: '16/9',
+          width: '100%',
+          height: 300,
           bgcolor: 'background.default',
           borderRadius: 1,
           overflow: 'hidden',

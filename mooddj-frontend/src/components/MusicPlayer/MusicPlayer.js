@@ -67,9 +67,27 @@ function MusicPlayer() {
     }
   };
 
-  const handlePlayPause = () => {
-    // This would call Spotify API to pause/resume
-    setIsPlaying(!isPlaying);
+  const handlePlayPause = async () => {
+    try {
+      setError(null);
+      if (isPlaying) {
+        const result = await musicService.pausePlayback();
+        if (result.success) {
+          setIsPlaying(false);
+        } else {
+          setError(result.error || 'Failed to pause playback');
+        }
+      } else {
+        const result = await musicService.resumePlayback();
+        if (result.success) {
+          setIsPlaying(true);
+        } else {
+          setError(result.error || 'Failed to resume playback');
+        }
+      }
+    } catch (err) {
+      setError('Failed to control playback. Make sure Spotify is open.');
+    }
   };
 
   const handleNext = () => {

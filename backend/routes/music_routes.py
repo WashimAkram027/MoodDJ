@@ -83,6 +83,53 @@ def play_track():
         print(f"Error playing track: {e}")
         return jsonify({'error': str(e)}), 500
 
+
+@music_bp.route('/pause', methods=['POST'])
+def pause_playback():
+    """Pause current playback"""
+    try:
+        sp_client, error = get_spotify_client()
+        if error:
+            return error
+
+        data = request.json or {}
+        device_id = data.get('device_id')
+
+        result = spotify_service.pause_playback(device_id, sp_client)
+
+        if result['success']:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 400
+
+    except Exception as e:
+        print(f"Error pausing playback: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@music_bp.route('/resume', methods=['POST'])
+def resume_playback():
+    """Resume paused playback"""
+    try:
+        sp_client, error = get_spotify_client()
+        if error:
+            return error
+
+        data = request.json or {}
+        device_id = data.get('device_id')
+
+        result = spotify_service.resume_playback(device_id, sp_client)
+
+        if result['success']:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 400
+
+    except Exception as e:
+        print(f"Error resuming playback: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @music_bp.route('/current', methods=['GET'])
 def get_current_track():
     """Get currently playing track"""

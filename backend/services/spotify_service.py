@@ -445,7 +445,47 @@ class SpotifyService:
             return {'success': True}
         except Exception as e:
             return {'success': False, 'error': str(e)}
-    
+
+    def pause_playback(self, device_id=None, sp_client=None):
+        """
+        Pause Spotify playback
+
+        Args:
+            device_id: Optional device ID
+            sp_client: Spotify client instance (from session token)
+
+        Returns:
+            dict: Success status
+        """
+        if not sp_client:
+            return {'success': False, 'error': 'Not authenticated'}
+
+        try:
+            sp_client.pause_playback(device_id=device_id)
+            return {'success': True}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    def resume_playback(self, device_id=None, sp_client=None):
+        """
+        Resume Spotify playback
+
+        Args:
+            device_id: Optional device ID
+            sp_client: Spotify client instance (from session token)
+
+        Returns:
+            dict: Success status
+        """
+        if not sp_client:
+            return {'success': False, 'error': 'Not authenticated'}
+
+        try:
+            sp_client.start_playback(device_id=device_id)
+            return {'success': True}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
     def get_current_playback(self, sp_client=None):
         """
         Get current playback state
