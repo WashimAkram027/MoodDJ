@@ -84,16 +84,13 @@ function VideoFeed() {
       const imageSrc = webcamRef.current.getScreenshot();
       
       if (!imageSrc) {
-        console.log('No image captured');
         return;
       }
 
       // Send to backend for mood detection
       const result = await moodService.detectMood(imageSrc);
-      
+
       if (result && result.detected) {
-        console.log('Mood detected:', result.mood, 'Confidence:', result.confidence);
-        
         // Update store
         setCurrentMood(result.mood, result.confidence);
         

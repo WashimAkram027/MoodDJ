@@ -21,17 +21,15 @@ class WebSocketService {
     });
 
     this.socket.on('connect', () => {
-      console.log('✅ WebSocket connected');
       this.isConnected = true;
     });
 
     this.socket.on('disconnect', () => {
-      console.log('❌ WebSocket disconnected');
       this.isConnected = false;
     });
 
-    this.socket.on('connection_response', (data) => {
-      console.log('Connection response:', data);
+    this.socket.on('connection_response', () => {
+      // Connection established
     });
 
     return this.socket;

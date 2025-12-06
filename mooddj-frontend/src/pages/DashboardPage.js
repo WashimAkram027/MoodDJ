@@ -25,7 +25,6 @@ function DashboardPage() {
   // Check authentication and redirect if not logged in
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      console.log('User not authenticated, redirecting to home...');
       navigate('/');
     }
   }, [isAuthenticated, authLoading, navigate]);

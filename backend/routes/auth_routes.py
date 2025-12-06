@@ -42,7 +42,6 @@ def callback():
     try:
         # Clear any existing session data first (important for multi-user support)
         session.clear()
-        print("[DEBUG] Cleared existing session for new login")
 
         # Get authorization code from query params
         code = request.args.get('code')
@@ -69,7 +68,6 @@ def callback():
         # Store token in session
         session.permanent = True  # Make session last beyond browser close
         session['spotify_token_info'] = token_info
-        print(f"[DEBUG] Session after storing token: {dict(session)}")
 
         # Get user profile and store in session
         sp_client = spotify_service.create_spotify_client(token_info)
@@ -133,10 +131,8 @@ def status():
     Returns whether user is authenticated and their profile info
     """
     try:
-        print(f"[DEBUG] Status check - Session contents: {dict(session)}")
         token_info = session.get('spotify_token_info')
         user_id = session.get('user_id')
-        print(f"[DEBUG] token_info exists: {token_info is not None}, user_id: {user_id}")
 
         if not token_info or not user_id:
             return jsonify({
