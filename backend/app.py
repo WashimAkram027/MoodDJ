@@ -182,4 +182,5 @@ if __name__ == '__main__':
 
     logger.info('-'*70)
     logger.info('🚀 Server ready! Running on http://0.0.0.0:5000')
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+    socketio.run(app, host='0.0.0.0', port=5000, debug=debug_mode)

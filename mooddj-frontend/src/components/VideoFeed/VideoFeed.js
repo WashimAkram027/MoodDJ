@@ -19,10 +19,10 @@ function VideoFeed() {
     let intervalId;
 
     if (isActive && isDetecting) {
-      // Capture and process frame every 5 seconds
+      // Capture and process frame every 3 seconds
       intervalId = setInterval(async () => {
         await captureAndDetectMood();
-      }, 5000);
+      }, 3000);
     }
 
     return () => {
@@ -42,16 +42,13 @@ function VideoFeed() {
       const imageSrc = webcamRef.current.getScreenshot();
       
       if (!imageSrc) {
-        console.log('No image captured');
         return;
       }
 
       // Send to backend for mood detection
       const result = await moodService.detectMood(imageSrc);
-      
+
       if (result && result.detected) {
-        console.log('Mood detected:', result.mood, 'Confidence:', result.confidence);
-        
         // Update store
         setCurrentMood(result.mood, result.confidence);
         
@@ -110,8 +107,8 @@ function VideoFeed() {
       <Box
         sx={{
           position: 'relative',
-          width: '50%',
-          aspectRatio: '16/9',
+          width: '100%',
+          height: 300,
           bgcolor: 'background.default',
           borderRadius: 1,
           overflow: 'hidden',
@@ -194,7 +191,7 @@ function VideoFeed() {
       </Box>
 
       <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-        {isDetecting ? '🟢 Detecting mood every 5 seconds...' : 'Your video is processed locally and never stored'}
+        {isDetecting ? '🟢 Detecting mood every 3 seconds...' : 'Your video is processed locally and never stored'}
       </Typography>
     </Box>
   );

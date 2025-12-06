@@ -47,7 +47,6 @@ function App() {
         if (authStatus.authenticated) {
           setIsAuthenticated(true);
           setUser(authStatus.user);
-          console.log('User is authenticated:', authStatus.user);
         } else {
           setIsAuthenticated(false);
           setUser(null);

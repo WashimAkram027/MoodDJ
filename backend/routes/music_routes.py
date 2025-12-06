@@ -83,6 +83,53 @@ def play_track():
         print(f"Error playing track: {e}")
         return jsonify({'error': str(e)}), 500
 
+
+@music_bp.route('/pause', methods=['POST'])
+def pause_playback():
+    """Pause current playback"""
+    try:
+        sp_client, error = get_spotify_client()
+        if error:
+            return error
+
+        data = request.json or {}
+        device_id = data.get('device_id')
+
+        result = spotify_service.pause_playback(device_id, sp_client)
+
+        if result['success']:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 400
+
+    except Exception as e:
+        print(f"Error pausing playback: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@music_bp.route('/resume', methods=['POST'])
+def resume_playback():
+    """Resume paused playback"""
+    try:
+        sp_client, error = get_spotify_client()
+        if error:
+            return error
+
+        data = request.json or {}
+        device_id = data.get('device_id')
+
+        result = spotify_service.resume_playback(device_id, sp_client)
+
+        if result['success']:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 400
+
+    except Exception as e:
+        print(f"Error resuming playback: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @music_bp.route('/current', methods=['GET'])
 def get_current_track():
     """Get currently playing track"""
@@ -197,3 +244,39 @@ def create_playlist():
     except Exception as e:
         print(f"Error creating playlist: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+@music_bp.route('/reset', methods=['POST'])
+def reset_library():
+    """Reset user's synced library - delete all their synced songs"""
+    try:
+        from config.database import execute_query
+
+        # Get user_id from session
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+
+        # Delete user's song links from user_songs table
+        delete_user_songs = """
+            DELETE us FROM user_songs us
+            INNER JOIN users u ON us.user_id = u.user_id
+            WHERE u.spotify_id = %s
+        """
+        execute_query(delete_user_songs, (user_id,))
+
+        # Clean up orphaned songs (songs not linked to any user)
+        delete_orphaned = """
+            DELETE FROM songs
+            WHERE song_id NOT IN (SELECT DISTINCT song_id FROM user_songs)
+        """
+        execute_query(delete_orphaned)
+
+        return jsonify({
+            'success': True,
+            'message': 'Library reset successfully'
+        }), 200
+
+    except Exception as e:
+        print(f"Error resetting library: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500

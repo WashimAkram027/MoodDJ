@@ -164,20 +164,21 @@ class SpotifyService:
 
     def _detect_mood_from_features(self, valence, energy, tempo):
         """
-        Determine mood category from audio features
+        Determine mood category from audio features.
+        Simplified to 3 moods: happy, angry, neutral
 
         Returns:
             str: mood name that best matches the audio features
         """
-        # Mood to audio feature mappings
+        # Handle NULL values
+        if valence is None or energy is None or tempo is None:
+            return 'neutral'
+
+        # Simplified 3-mood system
         mood_params = {
             'happy': {'valence': (0.6, 1.0), 'energy': (0.5, 1.0), 'tempo': (100, 180)},
-            'sad': {'valence': (0.0, 0.4), 'energy': (0.2, 0.5), 'tempo': (60, 100)},
-            'excited': {'valence': (0.7, 1.0), 'energy': (0.7, 1.0), 'tempo': (120, 200)},
-            'calm': {'valence': (0.3, 0.7), 'energy': (0.2, 0.5), 'tempo': (60, 100)},
-            'neutral': {'valence': (0.4, 0.7), 'energy': (0.4, 0.7), 'tempo': (80, 130)},
             'angry': {'valence': (0.0, 0.4), 'energy': (0.6, 1.0), 'tempo': (120, 180)},
-            'surprised': {'valence': (0.5, 1.0), 'energy': (0.6, 1.0), 'tempo': (110, 180)}
+            'neutral': {'valence': (0.3, 0.7), 'energy': (0.3, 0.7), 'tempo': (70, 140)}
         }
 
         # Find best matching mood
@@ -199,12 +200,13 @@ class SpotifyService:
 
         return best_mood
 
-    def get_songs_for_mood(self, mood, limit=30, user_id=None):
+    def get_songs_for_mood(self, mood, limit=50, user_id=None):
         """
-        Get songs from database that match the mood, filtered by user
+        Get songs from database that match the mood, filtered by user.
+        Simplified to 3 moods: happy, angry, neutral
 
         Args:
-            mood: Mood name (happy, sad, excited, calm, neutral, angry, surprised)
+            mood: Mood name (happy, angry, neutral)
             limit: Maximum number of songs to return
             user_id: Spotify user ID to filter songs by user's library
 
@@ -212,15 +214,11 @@ class SpotifyService:
             list: Songs matching the mood criteria for this user
         """
         try:
-            # Mood to audio feature mappings
+            # Simplified 3-mood system
             mood_params = {
                 'happy': {'valence': (0.6, 1.0), 'energy': (0.5, 1.0), 'tempo': (100, 180)},
-                'sad': {'valence': (0.0, 0.4), 'energy': (0.2, 0.5), 'tempo': (60, 100)},
-                'excited': {'valence': (0.7, 1.0), 'energy': (0.7, 1.0), 'tempo': (120, 200)},
-                'calm': {'valence': (0.3, 0.7), 'energy': (0.2, 0.5), 'tempo': (60, 100)},
-                'neutral': {'valence': (0.4, 0.7), 'energy': (0.4, 0.7), 'tempo': (80, 130)},
                 'angry': {'valence': (0.0, 0.4), 'energy': (0.6, 1.0), 'tempo': (120, 180)},
-                'surprised': {'valence': (0.5, 1.0), 'energy': (0.6, 1.0), 'tempo': (110, 180)}
+                'neutral': {'valence': (0.3, 0.7), 'energy': (0.3, 0.7), 'tempo': (70, 140)}
             }
 
             params = mood_params.get(mood, mood_params['neutral'])
@@ -447,7 +445,47 @@ class SpotifyService:
             return {'success': True}
         except Exception as e:
             return {'success': False, 'error': str(e)}
-    
+
+    def pause_playback(self, device_id=None, sp_client=None):
+        """
+        Pause Spotify playback
+
+        Args:
+            device_id: Optional device ID
+            sp_client: Spotify client instance (from session token)
+
+        Returns:
+            dict: Success status
+        """
+        if not sp_client:
+            return {'success': False, 'error': 'Not authenticated'}
+
+        try:
+            sp_client.pause_playback(device_id=device_id)
+            return {'success': True}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    def resume_playback(self, device_id=None, sp_client=None):
+        """
+        Resume Spotify playback
+
+        Args:
+            device_id: Optional device ID
+            sp_client: Spotify client instance (from session token)
+
+        Returns:
+            dict: Success status
+        """
+        if not sp_client:
+            return {'success': False, 'error': 'Not authenticated'}
+
+        try:
+            sp_client.start_playback(device_id=device_id)
+            return {'success': True}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
     def get_current_playback(self, sp_client=None):
         """
         Get current playback state

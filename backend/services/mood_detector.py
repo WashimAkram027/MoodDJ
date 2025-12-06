@@ -1,6 +1,6 @@
 import cv2
 import math
-from collections import deque
+from collections import deque, Counter
 import mediapipe as mp
 import numpy as np
 import base64
@@ -55,21 +55,18 @@ LBROW_MID3 = 296
 LBROW_OUTER = 336
 
 # ------------- Smoothing -------------
-WIN = 5  # frames to smooth over
+WIN = 3  # frames for majority voting
 
 # ------------- Thresholds (tune if needed) -------------
 SMILE_WIDTH_MIN = 0.56  # mouth width vs inter-ocular width
-MOUTH_OPEN_SURPRISE = 0.20  # mouth openness vs inter-ocular width
-EYE_OPEN_SURPRISE = 0.27  # average eyelid gap vs eye width
-BROW_RAISE_SURPRISE = 0.20  # eyebrow height vs eye height
 
 
 class MoodDetector:
     """
-    Encapsulates mood detection logic
-    Uses YOUR EXACT algorithm from the original code
+    Encapsulates mood detection logic with majority voting for stability.
+    Uses 3 moods: happy, angry, neutral
     """
-    
+
     def __init__(self):
         # MediaPipe setup
         self.mp_face_mesh = mp.solutions.face_mesh
@@ -79,14 +76,10 @@ class MoodDetector:
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5
         )
-        
-        # Smoothing history queues
-        self.hist_smile = deque(maxlen=WIN)
-        self.hist_mouth_open = deque(maxlen=WIN)
-        self.hist_eye_open = deque(maxlen=WIN)
-        self.hist_brow_raise = deque(maxlen=WIN)
-        self.hist_brow_distance = deque(maxlen=WIN)
-    
+
+        # Mood history for majority voting (simplified to 3 moods)
+        self.mood_history = deque(maxlen=WIN)
+
     def detect_from_base64(self, image_base64):
         """Detect mood from base64 encoded image (for API)"""
         try:
@@ -94,39 +87,71 @@ class MoodDetector:
             image_data = base64.b64decode(image_base64.split(',')[1])
             image = Image.open(BytesIO(image_data))
             frame = np.array(image)
-            
+
             # Convert RGB to BGR for OpenCV
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-            
+
             return self.detect_from_frame(frame)
         except Exception as e:
             print(f"Error detecting mood from base64: {e}")
             return None
-    
+
+    def _determine_instant_mood(self, s_smile, s_mopen, s_eopen, s_brow):
+        """
+        Determine instant mood from facial features (single frame).
+        Returns one of: happy, angry, neutral
+        """
+        # HAPPY: wide mouth (smile)
+        if s_smile > SMILE_WIDTH_MIN:
+            return "happy"
+
+        # ANGRY: Requires ALL conditions to be met
+        # Eye squinting + neutral mouth + lowered eyebrows
+        eyes_squinting = s_eopen < 0.23
+        mouth_neutral = s_smile < 0.55 and s_mopen < 0.15
+        brows_lowered = s_brow < 0.24
+
+        if eyes_squinting and mouth_neutral and brows_lowered:
+            return "angry"
+
+        # Default: NEUTRAL
+        return "neutral"
+
+    def _get_majority_mood(self):
+        """
+        Get majority mood from history with confidence.
+        Returns (mood, confidence)
+        """
+        if not self.mood_history:
+            return "neutral", 0.0
+
+        mood_counts = Counter(self.mood_history)
+        winner_mood, winner_count = mood_counts.most_common(1)[0]
+        total_votes = len(self.mood_history)
+        confidence = winner_count / total_votes if total_votes > 0 else 0.0
+
+        return winner_mood, confidence
+
     def detect_from_frame(self, frame):
         """
-        YOUR EXACT DETECTION ALGORITHM
-        Copied directly from your original code
+        Detect mood from frame using majority voting across recent frames.
+        Returns simplified 3-mood result: happy, angry, or neutral
         """
         h, w = frame.shape[:2]
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.face_mesh.process(rgb)
         faces = getattr(results, "multi_face_landmarks", None)
 
-        mood = "neutral"
-        confidence = 0.0
-
         if faces:
             lm = faces[0].landmark
 
             # --- Key points (pixels) ---
-            # Main mouth points
             p_ml = xy(lm[LM_MOUTH_LEFT], w, h)
             p_mr = xy(lm[LM_MOUTH_RIGHT], w, h)
             p_mu = xy(lm[LM_LIP_UP], w, h)
             p_md = xy(lm[LM_LIP_DOWN], w, h)
 
-            # Additional inner corner points for better accuracy
+            # Additional inner corner points
             p_ml_inner = xy(lm[LM_MOUTH_LEFT_INNER], w, h)
             p_mr_inner = xy(lm[LM_MOUTH_RIGHT_INNER], w, h)
 
@@ -140,26 +165,16 @@ class MoodDetector:
             p_le_up = xy(lm[L_EYE_UP], w, h)
             p_le_down = xy(lm[L_EYE_DOWN], w, h)
 
-            p_rbrow_inner = xy(lm[RBROW_INNER], w, h)
-            p_rbrow_mid1 = xy(lm[RBROW_MID1], w, h)
             p_rbrow_mid2 = xy(lm[RBROW_MID2], w, h)
-            p_rbrow_mid3 = xy(lm[RBROW_MID3], w, h)
-            p_rbrow_outer = xy(lm[RBROW_OUTER], w, h)
-
-            p_lbrow_inner = xy(lm[LBROW_INNER], w, h)
-            p_lbrow_mid1 = xy(lm[LBROW_MID1], w, h)
             p_lbrow_mid2 = xy(lm[LBROW_MID2], w, h)
-            p_lbrow_mid3 = xy(lm[LBROW_MID3], w, h)
-            p_lbrow_outer = xy(lm[LBROW_OUTER], w, h)
 
             # --- Base scales ---
             inter_ocular = dist(p_re_outer, p_le_outer) + 1e-6
             re_width = dist(p_re_outer, p_re_inner) + 1e-6
             le_width = dist(p_le_outer, p_le_inner) + 1e-6
-            eye_width_avg = (re_width + le_width) / 2.0
 
             # --- Features ---
-            # Enhanced mouth width - average of outer and inner corners
+            # Enhanced mouth width
             mouth_width_outer = dist(p_ml, p_mr) / inter_ocular
             mouth_width_inner = dist(p_ml_inner, p_mr_inner) / inter_ocular
             mouth_width = (mouth_width_outer + mouth_width_inner) / 2.0
@@ -167,90 +182,51 @@ class MoodDetector:
             # Mouth openness
             mouth_open = dist(p_mu, p_md) / inter_ocular
 
+            # Eye openness
             re_open = dist(p_re_up, p_re_down) / re_width
             le_open = dist(p_le_up, p_le_down) / le_width
             eye_open = (re_open + le_open) / 2.0
 
-            # Eyebrow height (using middle points)
+            # Eyebrow height
             re_center = ((p_re_outer[0] + p_re_inner[0]) // 2, (p_re_outer[1] + p_re_inner[1]) // 2)
             le_center = ((p_le_outer[0] + p_le_inner[0]) // 2, (p_le_outer[1] + p_le_inner[1]) // 2)
             rbrow_raise = abs(p_rbrow_mid2[1] - re_center[1]) / inter_ocular
             lbrow_raise = abs(p_lbrow_mid2[1] - le_center[1]) / inter_ocular
             brow_raise = (rbrow_raise + lbrow_raise) / 2.0
 
-            # Brow closeness (using inner points)
-            brow_distance = dist(p_rbrow_inner, p_lbrow_inner) / inter_ocular
+            # Determine instant mood for this frame
+            instant_mood = self._determine_instant_mood(mouth_width, mouth_open, eye_open, brow_raise)
 
-            # --- Smooth features ---
-            self.hist_smile.append(mouth_width)
-            self.hist_mouth_open.append(mouth_open)
-            self.hist_eye_open.append(eye_open)
-            self.hist_brow_raise.append(brow_raise)
-            self.hist_brow_distance.append(brow_distance)
+            # Add to history for majority voting
+            self.mood_history.append(instant_mood)
 
-            s_smile = sum(self.hist_smile) / len(self.hist_smile)
-            s_mopen = sum(self.hist_mouth_open) / len(self.hist_mouth_open)
-            s_eopen = sum(self.hist_eye_open) / len(self.hist_eye_open)
-            s_brow = sum(self.hist_brow_raise) / len(self.hist_brow_raise)
-            s_brow_dist = sum(self.hist_brow_distance) / len(self.hist_brow_distance)
-
-            # --- Mood rules ---
-            # SURPRISED: either full surprise or eyebrow-only
-            if ((s_mopen > MOUTH_OPEN_SURPRISE and
-                 s_eopen > EYE_OPEN_SURPRISE and
-                 s_brow > BROW_RAISE_SURPRISE) or
-                    (s_brow > 0.30)):
-                mood = "surprised"
-
-            # HAPPY: wide mouth (smile)
-            elif s_smile > SMILE_WIDTH_MIN:
-                mood = "happy"
-
-            else:
-                # ANGRY: Requires ALL conditions to be met
-                # Eye squinting + neutral mouth + lowered eyebrows
-                eyes_squinting = s_eopen < 0.23  # Eyes narrowed/squinting (adjusted for glasses)
-                mouth_neutral = s_smile < 0.55 and s_mopen < 0.15  # Not smiling, not wide open
-                brows_lowered = s_brow < 0.24  # Eyebrows lowered below neutral
-
-                # Anger if: ALL THREE conditions are met
-                if eyes_squinting and mouth_neutral and brows_lowered:
-                    mood = "angry"
-
-                # SAD: mouth not wide + lips not open
-                elif s_smile < 0.42 and s_mopen < 0.14:
-                    mood = "sad"
-
-                else:
-                    mood = "neutral"
-            
-            # Confidence always 1.0 (frontend expects this field)
-            confidence = 1.0
+            # Get majority mood with confidence
+            final_mood, confidence = self._get_majority_mood()
 
             # Store features for API response
             features = {
                 'inter_ocular': inter_ocular,
-                'mouth_width': round(s_smile, 3),
-                'mouth_open': round(s_mopen, 3),
-                'eye_open': round(s_eopen, 3),
-                'brow_raise': round(s_brow, 3),
-                'brow_distance': round(s_brow_dist, 3)
+                'mouth_width': round(mouth_width, 3),
+                'mouth_open': round(mouth_open, 3),
+                'eye_open': round(eye_open, 3),
+                'brow_raise': round(brow_raise, 3)
             }
-        
+
+            return {
+                'mood': final_mood,
+                'confidence': round(confidence, 2),
+                'features': features,
+                'detected': True
+            }
+
         else:
-            features = {}
-        
-        return {
-            'mood': mood,
-            'confidence': round(confidence, 2),
-            'features': features,
-            'detected': faces is not None
-        }
-    
+            return {
+                'mood': 'neutral',
+                'confidence': 0.0,
+                'features': {},
+                'detected': False
+            }
+
     def reset(self):
         """Reset mood detection history"""
-        self.hist_smile.clear()
-        self.hist_mouth_open.clear()
-        self.hist_eye_open.clear()
-        self.hist_brow_raise.clear()
-        self.hist_brow_distance.clear()
+        self.mood_history.clear()

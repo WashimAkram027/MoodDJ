@@ -14,6 +14,16 @@ export const musicService = {
     });
   },
 
+  // Pause playback
+  pausePlayback: async (deviceId = null) => {
+    return api.post('/api/music/pause', { device_id: deviceId });
+  },
+
+  // Resume playback
+  resumePlayback: async (deviceId = null) => {
+    return api.post('/api/music/resume', { device_id: deviceId });
+  },
+
   // Get current playback
   getCurrentPlayback: async () => {
     return api.get('/api/music/current');

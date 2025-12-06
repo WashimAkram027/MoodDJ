@@ -1,709 +1,385 @@
-# 🎵 MoodDJ - Your Mood, Your Music
+# MoodDJ - AI-Powered Mood-Based Music Recommendation
 
-**MoodDJ** is an intelligent web application that detects your facial expressions in real-time using computer vision and automatically adjusts your Spotify playlist to match your mood.
+MoodDJ is an intelligent web application that uses computer vision to detect your facial expressions in real-time and automatically recommends music from your Spotify library matching your current mood.
 
----
+## Features
 
-## 🚀 Installation Guide
+- **Real-time Mood Detection**: Uses MediaPipe for facial landmark detection and mood classification
+- **Spotify Integration**: OAuth authentication and playback control
+- **Personalized Recommendations**: Recommends songs based on audio features (valence, energy, tempo)
+- **Multi-user Support**: Each user's Spotify library is synced independently
+- **WebSocket Updates**: Real-time mood updates across connected clients
 
-This guide will walk you through setting up both the **backend** (Flask/Python) and **frontend** (React) components of MoodDJ.
+## Tech Stack
 
----
+### Backend
+- Flask (Python 3.10+)
+- MediaPipe + OpenCV
+- MySQL Database
+- Flask-SocketIO
+- Spotipy (Spotify API)
 
-## Prerequisites
+### Frontend
+- React 19
+- Material-UI
+- Zustand (State Management)
+- Socket.IO Client
+- React Webcam
 
-Before starting, make sure you have:
-- **Git** ([Download](https://git-scm.com/downloads))
-- **MySQL 8.0+** ([Download](https://dev.mysql.com/downloads/mysql/))
-- **Spotify Premium account**
-- **RapidAPI account** (free) - for audio features ([Sign up](https://rapidapi.com/))
-- **Webcam** (built-in or external)
+### Infrastructure
+- Docker + Docker Compose
+- AWS EC2 (Production)
+- AWS RDS MySQL
 
-> **Note**: Python 3.10 and Node.js will be installed during the setup steps below, so you don't need to install them globally on your system.
+## Important: Spotify Account Access
 
----
+Due to Spotify's API development mode limitations, **new users must be manually added** to the Spotify Developer Dashboard before they can use MoodDJ.
 
-## Part 1: Clone the Repository
+### For Testers/Evaluators
 
-### Step 1: Open Terminal/Command Prompt
+A **test Spotify account** has been set up for evaluation purposes. The credentials and Spotify ID are available in the **User Guide** document provided separately with this project.
 
-- **Windows**: Press `Win + R`, type `cmd`, press Enter
-- **macOS**: Press `Cmd + Space`, type `Terminal`, press Enter
-- **Linux**: Press `Ctrl + Alt + T`
+### Adding New Users
 
-### Step 2: Navigate to Your Workspace
+If you need to add your own Spotify account:
+1. The developer must add your Spotify email to the app's user list in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+2. Contact the developer with your Spotify account email to be whitelisted
+3. Once added, you can authenticate and sync your library
 
-Choose where you want to store the project. For example, Desktop:
+> **Note**: This limitation exists because the app is in "Development Mode". In production with an extended quota, this manual step would not be required.
 
-```bash
-# Windows
-cd Desktop
+## Important: Spotify Account Access
 
-# macOS/Linux
-cd ~/Desktop
-```
+Due to Spotify's API development mode limitations, **new users must be manually added** to the Spotify Developer Dashboard before they can use MoodDJ.
 
-### Step 3: Clone the Repository
+### For Testers/Evaluators
 
-```bash
-git clone https://github.com/YOUR_USERNAME/MoodDJ.git
-```
+A **test Spotify account** has been set up for evaluation purposes. The credentials and Spotify ID are available in the **User Guide** document provided separately with this project.
 
-> Replace `YOUR_USERNAME` with the actual GitHub username
+### Adding New Users
 
-### Step 4: Enter Project Directory
+If you need to add your own Spotify account:
+1. The developer must add your Spotify email to the app's user list in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+2. Contact the developer with your Spotify account email to be whitelisted
+3. Once added, you can authenticate and sync your library
 
-```bash
-cd MoodDJ
-```
+> **Note**: This limitation exists because the app is in "Development Mode". In production with an extended quota, this manual step would not be required.
 
-You should now see the project structure with `backend/` and `mooddj-frontend/` folders.
+## Quick Start
 
----
+### Prerequisites
 
-## Part 2: Backend Setup (Python/Flask)
+- Python 3.10+ (for local development)
+- Node.js 18+ and npm
+- MySQL 8.0+ (or use developer's AWS RDS)
+- Spotify Premium Account (or use provided test account)
+- Python 3.10+ (for local development)
+- Node.js 18+ and npm
+- MySQL 8.0+ (or use developer's AWS RDS)
+- Spotify Premium Account (or use provided test account)
+- RapidAPI Account (for audio features)
+- Docker & Docker Compose (optional, for containerized deployment)
 
-The backend handles mood detection, Spotify integration, and database management.
+### Option 1: Local Development
 
-### Step 1: Create Initial Virtual Environment
+This option runs the backend and frontend directly on your machine without Docker.
 
-Make sure you're in the **root project directory** (`.../MoodDJ/`), NOT in the backend folder.
-
-**On Windows:**
-```bash
-python -m venv venv
-```
-
-**On macOS/Linux:**
-```bash
-python3 -m venv venv
-```
-
-This creates a `venv` folder in the root MoodDJ directory.
-
-### Step 2: Activate Virtual Environment
-
-**On Windows:**
-```bash
-venv\Scripts\activate
-```
-
-**On macOS/Linux:**
-```bash
-source venv/bin/activate
-```
-
-✅ **Success Check**: You should see `(venv)` at the start of your terminal:
-```
-(venv) .../MoodDJ>
-```
-
-### Step 3: Install Python 3.10 in Virtual Environment
-
-Now we'll install Python 3.10 specifically within your project's virtual environment, so you don't need to install it globally on your system.
-
-**Check your current Python version:**
-```bash
-python --version
-```
-
-**If you don't have Python 3.10, install it in the venv:**
-
-**On Windows:**
-```bash
-pip install python==3.10
-```
-
-**On macOS/Linux:**
-```bash
-pip install python==3.10
-```
-
-> **Note**: If the above doesn't work, you may need to use a tool like `pyenv` to manage Python versions within your virtual environment.
-
-**Alternative Method Using pyenv (Recommended for version management):**
-
-If you need to install Python 3.10 without affecting your system Python:
-
-**Windows** (using pyenv-win):
-```bash
-# First, deactivate venv temporarily
-deactivate
-
-# Install pyenv-win
-pip install pyenv-win --target %USERPROFILE%\.pyenv
-
-# Install Python 3.10
-pyenv install 3.10.11
-
-# Set Python 3.10 for this project
-pyenv local 3.10.11
-
-# Recreate venv with Python 3.10
-python -m venv venv
-
-# Reactivate
-venv\Scripts\activate
-```
-
-**macOS/Linux** (using pyenv):
-```bash
-# First, deactivate venv temporarily
-deactivate
-
-# Install pyenv (if not already installed)
-curl https://pyenv.run | bash
-
-# Install Python 3.10
-pyenv install 3.10.11
-
-# Set Python 3.10 for this project
-pyenv local 3.10.11
-
-# Recreate venv with Python 3.10
-python -m venv venv
-
-# Reactivate
-source venv/bin/activate
-```
-
-### Step 4: Verify Python Version
-
-```bash
-python --version
-```
-
-✅ **You should see**: `Python 3.10.x`
-
-If you still don't see Python 3.10, you may need to install it from [python.org](https://www.python.org/downloads/release/python-3100/) and recreate the virtual environment using:
-- Windows: `py -3.10 -m venv venv`
-- macOS/Linux: `python3.10 -m venv venv`
-
-### Step 5: Navigate to Backend Directory
-
-```bash
-cd backend
-```
-
-You are now in: `.../MoodDJ/backend/`
-
-### Step 6: Install Python Dependencies
-
-```bash
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-This installs Flask, Spotipy, OpenCV, MediaPipe, MySQL connector, and other dependencies.
-
-**Installation takes 3-5 minutes.**
-```bash
-venv\Scripts\activate
-```
-
-**On macOS/Linux:**
-```bash
-source venv/bin/activate
-```
-
-✅ **Success Check**: You should see `(venv)` at the start of your terminal:
-```
-(venv) .../MoodDJ>
-```
-
-### Step 3: Navigate to Backend Directory
-
-```bash
-cd backend
-```
-
-You are now in: `.../MoodDJ/backend/`
-
-### Step 4: Install Python Dependencies
-
-```bash
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-This installs Flask, Spotipy, OpenCV, MediaPipe, MySQL connector, and other dependencies.
-
-**Installation takes 3-5 minutes.**
-
----
-
-## Part 3: Database Setup
-
-### Step 1: Start MySQL Server
-
-- **Windows**: Services → MySQL → Start
-- **macOS**: `brew services start mysql`
-- **Linux**: `sudo systemctl start mysql`
-
-### Step 2: Create Database
-
-Open a **new terminal window** and run:
-
-```bash
-mysql -u root -p
-```
-
-Enter your MySQL password when prompted.
-
-### Step 3: Run Database Schema
-
-In the MySQL prompt, run:
-
-```sql
-source database_schema.sql;
-```
-
-Or manually copy-paste the contents of `backend/database_schema.sql` into the MySQL prompt.
-
-This creates:
-- Database: `mooddj`
-- Tables: `users`, `songs`, `moods`, `mood_sessions`, `user_songs`
-- Default mood parameters
-
-### Step 4: Verify Database
-
-```sql
-USE mooddj;
-SHOW TABLES;
-```
-
-You should see 5 tables listed.
-
-```sql
-exit;
-```
-
-Close this terminal and return to your backend terminal with `(venv)` active.
-
----
-
-## Part 4: Test Backend Connection
-
-Still in `.../MoodDJ/backend/` with virtual environment active.
-
-### Test 1: Database Connection
-
-```bash
-python test_connection.py
-```
-
-✅ Expected output:
-```
-✅ Connected to database: mooddj
-✅ Tables found: 5
-```
-
-### Test 2: Spotify Authentication
-
-```bash
-python test_spotify.py
-```
-
-This will:
-1. Open a browser for Spotify login
-2. Redirect to a localhost URL
-3. Test basic API calls
-
-✅ Expected output:
-```
-✅ Token obtained
-✅ User: Your Spotify Name
-✅ Audio Features: valence=...
-🎉 Spotify authentication is working correctly!
-```
-
----
-
-## Part 5: Sync Your Spotify Library & Audio Features
-
-**Important**: Do this before running the main app to populate the database with songs.
-
-### Step 1: Configure RapidAPI (Audio Features Workaround)
-
-Spotify's audio features API has been deprecated. We use **SoundNet Track Analysis** as an alternative.
-
-1. Go to [RapidAPI.com](https://rapidapi.com/) and create a free account
-2. Subscribe to [Track Analysis API](https://rapidapi.com/soundnet-soundnet-default/api/track-analysis)
-3. Copy your RapidAPI key
-4. Add it to `backend/.env`:
+1. **Clone the repository**
    ```bash
-   RAPIDAPI_KEY=your_rapidapi_key_here
+   git clone https://github.com/WashimAkram027/MoodDJ.git
+   cd MoodDJ
    ```
 
-### Step 2: Sync Spotify Library
+#### Backend Setup
 
-Still in `.../MoodDJ/backend/` with `(venv)` active:
+2. **Navigate to the backend directory**
+   ```bash
+   cd backend
+   ```
 
-```bash
-python sync_spotify_library.py
-```
+3. **Create a Python virtual environment**
 
-**What happens:**
-1. Asks how many tracks to sync (default: 50)
-2. Fetches your saved Spotify songs
-3. Attempts to get audio features from Spotify (will likely fail)
-4. **Automatically falls back to SoundNet API** for audio features
-5. Stores songs with valence, energy, tempo in database
+   A virtual environment isolates project dependencies from your system Python installation. This is **strongly recommended** to avoid conflicts.
 
-**This takes 2-5 minutes depending on number of tracks.**
+   ```bash
+   # Create the virtual environment
+   python -m venv venv
+   ```
 
-### Step 3: Backfill Missing Features (if needed)
+4. **Activate the virtual environment**
 
-If your songs have NULL audio features, run the backfill script:
+   You must activate the venv every time you open a new terminal to work on this project.
 
-```bash
-python backfill_audio_features.py
-# Choose option 1 to test API, then option 2 to backfill
-```
+   ```bash
+   # Windows (Command Prompt)
+   venv\Scripts\activate
 
-This updates all songs with missing audio features using SoundNet API.
+   # Windows (PowerShell)
+   venv\Scripts\Activate.ps1
 
-✅ Expected output:
-```
-Total songs processed: 50
-Successfully updated: 45-50
-```
+   # macOS/Linux
+   source venv/bin/activate
+   ```
 
-> **Note**: Some very obscure/regional songs may not be found in SoundNet's database. This is normal.
+   When activated, you'll see `(venv)` at the beginning of your command prompt.
 
----
+5. **Install Python dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-## Part 6: Frontend Setup (React)
+6. **Set up the database**
 
-### Step 1: Install Node.js and npm
+   Choose one of the following options:
 
-The frontend requires Node.js (JavaScript runtime) and npm (package manager).
+   **Option A: Local MySQL Database**
 
-**Check if Node.js is already installed:**
-```bash
-node --version
-npm --version
-```
+   Set up your own MySQL instance:
+   ```bash
+   # Create the database
+   mysql -u root -p -e "CREATE DATABASE mooddj;"
 
-If you see version numbers (Node.js 16+ and npm 8+), skip to Step 2.
+   # Import the schema
+   mysql -u root -p mooddj < database_schema.sql
+   ```
 
-**If not installed, install Node.js:**
+   Configure `backend/.env`:
+   ```env
+   DB_HOST=localhost
+   DB_USER=root
+   DB_PASSWORD=your_mysql_password
+   DB_NAME=mooddj
+   DB_PORT=3306
+   ```
 
-**Method 1: Using Node Version Manager (nvm) - Recommended**
+   **Option B: Developer's AWS RDS Database**
 
-This allows you to install Node.js locally for your project without affecting system-wide installations.
+   Connect to the hosted database (credentials provided in User Guide):
+   ```env
+   DB_HOST=<aws-rds-endpoint-from-user-guide>
+   DB_USER=<username-from-user-guide>
+   DB_PASSWORD=<password-from-user-guide>
+   DB_NAME=mooddj
+   DB_PORT=3306
+   ```
 
-**Windows (nvm-windows):**
-```bash
-# Download and install nvm-windows from:
-# https://github.com/coreybutler/nvm-windows/releases
+7. **Configure remaining environment variables**
 
-# After installation, open a NEW terminal and run:
-nvm install 18.18.0
-nvm use 18.18.0
-```
+   Complete your `backend/.env` file:
+   ```env
+   SECRET_KEY=your-secret-key-here
 
-**macOS/Linux (nvm):**
-```bash
-# Install nvm
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
+   SPOTIFY_CLIENT_ID=your_spotify_client_id
+   SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+   SPOTIFY_REDIRECT_URI=http://127.0.0.1:5000/api/auth/callback
 
-# Close and reopen terminal, then:
-nvm install 18.18.0
-nvm use 18.18.0
-```
+   RAPIDAPI_KEY=your_rapidapi_key
+   RAPIDAPI_HOST=track-analysis.p.rapidapi.com
 
-**Method 2: Direct Installation**
+   FRONTEND_URL=http://127.0.0.1:3000
+   BACKEND_URL=http://127.0.0.1:5000
+   ```
 
-Download and install from [nodejs.org](https://nodejs.org/):
-- Download Node.js 18.x LTS (Long Term Support)
-- Run the installer
-- **On Windows**: Make sure to check "Add to PATH" during installation
-- Restart your terminal after installation
+8. **Start the backend server**
+   ```bash
+   python app.py
+   ```
 
-**Verify installation:**
-```bash
-node --version
-npm --version
-```
+   The backend will run at http://127.0.0.1:5000
 
-✅ **You should see**: 
-```
-v18.x.x
-9.x.x (or higher)
-```
+#### Frontend Setup
 
-### Step 2: Open a New Terminal
-
-Keep the backend terminal open. Open a **new terminal window**.
-
-### Step 2: Navigate to Frontend Directory
-
-```bash
-cd Desktop/MoodDJ/mooddj-frontend
-```
-
-Or from the project root:
-```bash
-cd mooddj-frontend
-```
-
-You are now in: `.../MoodDJ/mooddj-frontend/`
-
-### Step 3: Install Node Dependencies
-
-```bash
-npm install
-```
-
-This installs React, Material-UI, Socket.IO, Recharts, and other frontend dependencies.
-
-**Installation takes 2-3 minutes.**
-
-✅ You should see a `node_modules` folder created.
-
----
-
-## Part 7: Running the Application
-
-You need **two terminals open** - one for backend, one for frontend.
-
-### Terminal 1: Start Backend Server
-
-In `.../MoodDJ/backend/` with `(venv)` active:
-
-```bash
-python app.py
-```
-
-✅ Expected output:
-```
-[INFO] Database connection pool created successfully
-[INFO] Starting MoodDJ Backend Server...
- * Running on http://0.0.0.0:5000
-```
-
-**Leave this terminal running.**
-
-### Terminal 2: Start Frontend
-
-In `.../MoodDJ/mooddj-frontend/`:
-
-```bash
-npm start
-```
-
-✅ Expected output:
-```
-Compiled successfully!
-Local:            http://localhost:3000
-```
-
-**Your browser should automatically open to http://localhost:3000**
-
-If it doesn't, manually go to: `http://localhost:3000`
-
----
-
-## 🎮 Using MoodDJ
-
-1. **Home Page**: Click "Get Started"
-2. **Dashboard Opens**: You'll see 4 sections:
-   - Camera feed (top left)
-   - Current mood display (top right)
-   - Music player (middle right)
-   - Analytics (bottom)
-3. **Click "Start Detection"**: Allows camera access
-4. **Your mood is detected** every 2 seconds
-5. **Music automatically plays** matching your mood!
-
----
-
-## 📝 Daily Workflow (After Initial Setup)
-
-### Every Time You Work on the Project:
-
-**Terminal 1 - Backend:**
-```bash
-# Navigate to project root first
-cd Desktop/MoodDJ
-
-# Activate virtual environment
-# Windows:
-venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
-
-# Navigate to backend
-cd backend
-
-# Pull latest changes (do this from root before activating venv)
-cd ..
-git pull origin main
-cd backend
-
-# Start backend
-python app.py
-```
-
-**Terminal 2 - Frontend:**
-```bash
-# Navigate to frontend
-cd Desktop/MoodDJ/mooddj-frontend
-
-# Pull latest changes
-git pull origin main
-
-# Start frontend
-npm start
-```
-
----
-
-## 📁 Project Structure
+1. **Navigate to the frontend directory** (in a new terminal)
+   ```bash
+   cd mooddj-frontend
+   ```
+
+2. **Install Node.js dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Start the frontend development server**
+   ```bash
+   npm start
+   ```
+
+   The frontend will run at http://127.0.0.1:3000
+
+### Option 2: Docker Deployment
+
+This option uses Docker Compose to run both services in containers.
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/WashimAkram027/MoodDJ.git
+   cd MoodDJ
+   ```
+
+2. **Configure environment variables**
+
+   Backend (`backend/.env`):
+   ```env
+   DB_HOST=localhost
+   DB_USER=root
+   DB_PASSWORD=your_password
+   DB_NAME=mooddj
+   DB_PORT=3306
+
+   SECRET_KEY=your-secret-key
+
+   SPOTIFY_CLIENT_ID=your_spotify_client_id
+   SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+   SPOTIFY_REDIRECT_URI=http://127.0.0.1:5000/api/auth/callback
+
+   RAPIDAPI_KEY=your_rapidapi_key
+   RAPIDAPI_HOST=track-analysis.p.rapidapi.com
+
+   FRONTEND_URL=http://127.0.0.1:3000
+   BACKEND_URL=http://127.0.0.1:5000
+   ```
+
+3. **Start the application**
+   ```bash
+   docker-compose up --build
+   ```
+
+4. **Access the application**
+   - Frontend: http://127.0.0.1:3000
+   - Backend API: http://127.0.0.1:5000
+
+## Usage
+
+1. Open http://127.0.0.1:3000 in your browser
+2. Click "Connect with Spotify" to authenticate
+3. Sync your Spotify library from the dashboard (click "Sync Library Now")
+4. Click "Start Detection" to enable mood detection via webcam
+5. Music recommendations will automatically update based on your detected mood
+6. Use the play/pause controls to control Spotify playback
+3. Sync your Spotify library from the dashboard (click "Sync Library Now")
+4. Click "Start Detection" to enable mood detection via webcam
+5. Music recommendations will automatically update based on your detected mood
+6. Use the play/pause controls to control Spotify playback
+
+## Project Structure
 
 ```
-MoodDJ/                              # Root project directory
-│
-├── venv/                            # Virtual environment (DO NOT COMMIT)
-│
-├── backend/                         # Flask Backend
-│   ├── app.py                      # Main Flask application
-│   ├── requirements.txt            # Python dependencies
-│   ├── database_schema.sql         # Database structure
-│   ├── .env                        # Environment variables (committed for now)
-│   │
+MoodDJ/
+├── backend/
+│   ├── app.py                    # Flask application entry point
 │   ├── config/
-│   │   └── database.py            # Database connection pool
-│   │
+│   │   └── database.py           # Database connection pool
 │   ├── routes/
-│   │   ├── auth_routes.py         # Authentication endpoints
-│   │   ├── mood_routes.py         # Mood detection endpoints
-│   │   └── music_routes.py        # Music/Spotify endpoints
-│   │
+│   │   ├── auth_routes.py        # OAuth & authentication
+│   │   ├── mood_routes.py        # Mood detection endpoints
+│   │   └── music_routes.py       # Music & playback endpoints
 │   ├── services/
-│   │   ├── mood_detector.py       # Mood detection logic (MediaPipe)
-│   │   └── spotify_service.py     # Spotify API wrapper
-│   │
-│   ├── sync_spotify_library.py    # Script to populate database
-│   ├── test_connection.py         # Test database connection
-│   └── test_spotify.py            # Test Spotify authentication
+│   │   ├── audio_features_service.py  # RapidAPI integration
+│   │   ├── mood_detector.py      # MediaPipe mood detection
+│   │   └── spotify_service.py    # Spotify API wrapper
+│   ├── tests/                    # Unit tests (46 tests)
+│   ├── database_schema.sql       # MySQL schema
+│   ├── Dockerfile
+│   └── requirements.txt
 │
-├── mooddj-frontend/                # React Frontend
-│   ├── public/                     # Static files
+├── mooddj-frontend/
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── VideoFeed/         # Camera component
-│   │   │   ├── MoodDisplay/       # Shows current mood
-│   │   │   ├── MusicPlayer/       # Music playback controls
-│   │   │   └── Analytics/         # Mood statistics
-│   │   │
+│   │   │   ├── VideoFeed/        # Webcam & detection
+│   │   │   ├── MoodDisplay/      # Mood visualization
+│   │   │   └── MusicPlayer/      # Playback controls
 │   │   ├── pages/
-│   │   │   ├── HomePage.js        # Landing page
-│   │   │   └── DashboardPage.js   # Main app page
-│   │   │
-│   │   ├── services/
-│   │   │   ├── api.js             # Axios configuration
-│   │   │   ├── moodService.js     # Mood API calls
-│   │   │   ├── musicService.js    # Music API calls
-│   │   │   └── websocket.js       # WebSocket connection
-│   │   │
-│   │   ├── store/
-│   │   │   └── useStore.js        # Zustand state management
-│   │   │
-│   │   ├── App.js                 # Main React component
-│   │   └── index.js               # Entry point
-│   │
-│   ├── package.json               # Node dependencies
-│   └── .env                       # Frontend environment variables
+│   │   │   ├── HomePage.js       # Landing page
+│   │   │   └── DashboardPage.js  # Main application
+│   │   ├── services/             # API & WebSocket services
+│   │   └── store/                # Zustand state management
+│   ├── __tests__/                # Frontend tests (15 tests)
+│   ├── Dockerfile
+│   └── package.json
 │
-├── .gitignore                     # Git ignore rules
-└── README.md                      # This file
+├── docs/                         # Assignment documentation
+├── docker-compose.yml
+└── README.md
 ```
 
----
+## API Endpoints
 
-## ⚠️ Common Issues & Solutions
+### Authentication
+- `GET /api/auth/login` - Initiate Spotify OAuth
+- `GET /api/auth/callback` - OAuth callback
+- `POST /api/auth/logout` - Logout user
+- `GET /api/auth/status` - Check auth status
 
-### "Command not found: python"
-- **Windows**: Use `python`
-- **macOS/Linux**: Use `python3`
+### Mood Detection
+- `POST /api/mood/detect` - Detect mood from image
+- `POST /api/mood/log` - Log mood to database
+- `GET /api/mood/history` - Get mood history
 
-### "No module named 'flask'" (or similar)
-- Ensure virtual environment is activated: you should see `(venv)`
-- Reinstall: `pip install -r requirements.txt`
+### Music
+- `POST /api/music/recommend` - Get recommendations by mood
+- `POST /api/music/recommend` - Get recommendations by mood
+- `POST /api/music/play` - Play track on Spotify
+- `POST /api/music/pause` - Pause playback
+- `POST /api/music/resume` - Resume playback
+- `POST /api/music/pause` - Pause playback
+- `POST /api/music/resume` - Resume playback
+- `POST /api/music/sync` - Sync user's Spotify library
+- `GET /api/music/sync/status` - Get sync status
+- `POST /api/music/reset` - Reset synced library
+- `POST /api/music/reset` - Reset synced library
 
-### "Failed to open camera" in frontend
-- Close other apps using camera (Zoom, Teams, Skype)
-- Check browser permissions (allow camera access)
-- Try refreshing the page
+## Testing
 
-### "No active Spotify devices found"
-- **Open Spotify desktop app** or web player
-- **Start playing any song** first
-- Then try MoodDJ again
-
-### "Connection refused" to backend
-- Make sure backend is running: `python app.py`
-- Check backend URL in `mooddj-frontend/.env`: should be `http://127.0.0.1:5000`
-
-### "No songs found for this mood"
-- Run the sync script: `python sync_spotify_library.py`
-- If songs still have NULL audio features, run: `python backfill_audio_features.py`
-- Make sure you have saved songs in your Spotify library and RapidAPI key is configured
-
-### MySQL connection error
-- Check if MySQL is running
-- Verify credentials in `backend/.env`
-- Test connection: `python test_connection.py`
-
-### Frontend won't start / Module errors
-- Delete `node_modules` and reinstall:
+### Backend Tests
 ```bash
-rm -rf node_modules
-npm install
-```
-
----
-
-## 🔄 Pulling Latest Changes
-
-When your teammates make updates:
-
-```bash
-# In project root
-cd MoodDJ
-git pull origin main
-
-# Reinstall dependencies if needed
 cd backend
-pip install -r requirements.txt
-
-cd ../mooddj-frontend
-npm install
+# Activate venv first
+# Activate venv first
+pytest tests/ -v
 ```
 
----
+### Frontend Tests
+```bash
+cd mooddj-frontend
+npm test
+```
 
-## 🆘 Getting Help
+## Environment Variables
 
-If you encounter issues:
+| Variable | Description |
+|----------|-------------|
+| `DB_HOST` | MySQL host (localhost or AWS RDS endpoint) |
+| `DB_HOST` | MySQL host (localhost or AWS RDS endpoint) |
+| `DB_USER` | MySQL username |
+| `DB_PASSWORD` | MySQL password |
+| `DB_NAME` | Database name (default: mooddj) |
+| `SPOTIFY_CLIENT_ID` | Spotify app client ID |
+| `SPOTIFY_CLIENT_SECRET` | Spotify app client secret |
+| `SPOTIFY_REDIRECT_URI` | OAuth callback URL |
+| `RAPIDAPI_KEY` | RapidAPI key for audio features |
+| `SECRET_KEY` | Flask session secret |
 
-1. Read the error message carefully
-2. Check this README's troubleshooting section
-3. Verify virtual environment is active (`(venv)` visible)
-4. Ensure you're in the correct directory
-5. Check that both backend and frontend are running
-6. Contact your team lead
-7. Create a GitHub issue with:
-   - What you were trying to do
-   - The exact error message
-   - Your operating system
+## Mood Detection
 
----
+MoodDJ uses a majority voting algorithm to detect three moods based on facial expressions:
 
-## 🎉 You're All Set!
+- **Happy** - Wide smile detected → High valence, high energy music
+- **Angry** - Furrowed brows, squinting eyes → Low valence, high energy music
+- **Neutral** - Relaxed expression → Medium valence, medium energy music
 
-Once you see the dashboard with your camera feed detecting your mood and Spotify playing music, you're ready to start developing!
+The mood is determined by analyzing facial landmarks every 3 seconds using MediaPipe, with a 3-frame majority voting system for stability.
+MoodDJ uses a majority voting algorithm to detect three moods based on facial expressions:
 
-**Happy coding! 🚀**
+- **Happy** - Wide smile detected → High valence, high energy music
+- **Angry** - Furrowed brows, squinting eyes → Low valence, high energy music
+- **Neutral** - Relaxed expression → Medium valence, medium energy music
+
+The mood is determined by analyzing facial landmarks every 3 seconds using MediaPipe, with a 3-frame majority voting system for stability.
+
+## Contributors
+
+- Washim Akram - Lead Developer
+
+## License
+
+This project is developed for educational purposes as part of a capstone project.

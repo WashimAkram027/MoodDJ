@@ -1,31 +1,32 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Container, Grid, Paper, Typography, Box, Chip, Alert, CircularProgress, Button, Card, CardContent } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { Videocam, MusicNote, Mood, CloudSync, CheckCircle } from '@mui/icons-material';
+import { Videocam, MusicNote, Mood, CloudSync, CheckCircle, Refresh, Delete } from '@mui/icons-material';
 import VideoFeed from '../components/VideoFeed/VideoFeed';
 import MoodDisplay from '../components/MoodDisplay/MoodDisplay';
 import MusicPlayer from '../components/MusicPlayer/MusicPlayer';
 import { AuthContext } from '../App';
 import { musicService } from '../services/musicService';
+import useStore from '../store/useStore';
 
 function DashboardPage() {
   const navigate = useNavigate();
   const { isAuthenticated, user, authLoading } = useContext(AuthContext);
+  const { isDetecting } = useStore();
 
-  // You can connect these to your actual state management (Zustand)
+  // Connection status
   const [isConnected, setIsConnected] = useState(true);
-  const [cameraActive, setCameraActive] = useState(false);
 
   // Sync status state
   const [syncStatus, setSyncStatus] = useState(null);
   const [checkingSyncStatus, setCheckingSyncStatus] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [syncError, setSyncError] = useState(null);
 
   // Check authentication and redirect if not logged in
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      console.log('User not authenticated, redirecting to home...');
       navigate('/');
     }
   }, [isAuthenticated, authLoading, navigate]);
@@ -64,10 +65,37 @@ function DashboardPage() {
         setSyncError(response.error || 'Failed to sync library');
       }
     } catch (error) {
-      console.error('Error syncing library:', error);
       setSyncError('Failed to sync library. Please try again.');
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const handleResetLibrary = async () => {
+    if (!window.confirm('Are you sure? This will delete all your synced songs!')) {
+      return;
+    }
+
+    try {
+      setResetting(true);
+      setSyncError(null);
+
+      const response = await fetch('http://127.0.0.1:5000/api/music/reset', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        alert('Library reset successfully! You can now sync fresh songs.');
+        await checkSyncStatus();
+      } else {
+        alert('Reset failed: ' + data.error);
+      }
+    } catch (error) {
+      alert('Failed to reset library');
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -131,10 +159,10 @@ function DashboardPage() {
               sx={{ bgcolor: isConnected ? '#4caf50' : '#f44336', color: 'white', fontWeight: 600 }}
             />
             <Chip
-              label={cameraActive ? "✓ Camera Active" : "Camera Inactive"}
-              color={cameraActive ? "success" : "default"}
+              label={isDetecting ? "✓ Camera Active" : "Camera Inactive"}
+              color={isDetecting ? "success" : "default"}
               size="small"
-              sx={{ bgcolor: cameraActive ? '#4caf50' : '#757575', color: 'white', fontWeight: 600 }}
+              sx={{ bgcolor: isDetecting ? '#4caf50' : '#757575', color: 'white', fontWeight: 600 }}
             />
             <Chip
               label="✓ Spotify Connected"
@@ -153,6 +181,33 @@ function DashboardPage() {
           <strong>Getting Started:</strong> Click "Start Detection" in the video feed below.
           Make sure Spotify is open and playing on your device for the best experience.
         </Alert>
+
+        {/* Reset Library Button */}
+        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
+          <Button
+            variant="outlined"
+            color="error"
+            size="large"
+            onClick={handleResetLibrary}
+            disabled={resetting}
+            startIcon={resetting ? <CircularProgress size={20} color="inherit" /> : <Delete />}
+            sx={{
+              fontWeight: 600,
+              px: 4,
+              py: 1.5,
+              borderRadius: 2,
+              borderColor: '#f44336',
+              color: '#f44336',
+              bgcolor: 'rgba(255,255,255,0.9)',
+              '&:hover': {
+                borderColor: '#d32f2f',
+                bgcolor: 'rgba(244, 67, 54, 0.1)',
+              },
+            }}
+          >
+            {resetting ? 'Resetting Library...' : 'Reset All Synced Songs'}
+          </Button>
+        </Box>
 
         {/* Sync Library Prompt */}
         {!checkingSyncStatus && syncStatus && syncStatus.needs_sync && (
@@ -215,15 +270,65 @@ function DashboardPage() {
           </Card>
         )}
 
-        {/* Sync Success Message */}
+        {/* Sync Success Message with Re-Sync Button */}
         {!checkingSyncStatus && syncStatus && syncStatus.synced && (
-          <Alert
-            severity="success"
-            icon={<CheckCircle />}
-            sx={{ mb: 3, borderRadius: 2 }}
+          <Card
+            sx={{
+              mb: 3,
+              borderRadius: 3,
+              background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+              color: 'white',
+              boxShadow: '0 8px 24px rgba(76, 175, 80, 0.3)',
+            }}
           >
-            <strong>Library Synced!</strong> You have {syncStatus.song_count} songs ready for mood-based playback.
-          </Alert>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <CheckCircle sx={{ fontSize: 48, color: 'white' }} />
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
+                      Library Synced!
+                    </Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.95 }}>
+                      You have {syncStatus.song_count} songs ready for mood-based playback.
+                    </Typography>
+                  </Box>
+                </Box>
+                <Button
+                  variant="contained"
+                  size="medium"
+                  onClick={handleSyncLibrary}
+                  disabled={syncing || resetting}
+                  startIcon={syncing ? <CircularProgress size={20} color="inherit" /> : <Refresh />}
+                  sx={{
+                    bgcolor: 'white',
+                    color: '#4caf50',
+                    fontWeight: 600,
+                    px: 3,
+                    py: 1,
+                    borderRadius: 2,
+                    '&:hover': {
+                      bgcolor: 'rgba(255,255,255,0.9)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 6px 16px rgba(0,0,0,0.2)',
+                    },
+                    '&:disabled': {
+                      bgcolor: 'rgba(255,255,255,0.7)',
+                      color: '#4caf50',
+                    },
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  {syncing ? 'Re-Syncing...' : 'Re-Sync (50 songs)'}
+                </Button>
+              </Box>
+              {syncError && (
+                <Alert severity="error" sx={{ mt: 2 }} onClose={() => setSyncError(null)}>
+                  {syncError}
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         <Grid container spacing={3}>
@@ -250,7 +355,7 @@ function DashboardPage() {
                 </Typography>
               </Box>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                📸 Your facial expressions are analyzed every 5 seconds to detect your mood
+                📸 Your facial expressions are analyzed every 3 seconds to detect your mood
               </Typography>
               <VideoFeed />
             </Paper>

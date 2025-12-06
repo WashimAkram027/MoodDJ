@@ -7,6 +7,7 @@ flask_session/
 *$py.class
 *.so
 .Python
+.pytest_cache/
 
 # Spotify/Cache files
 .cache
@@ -26,9 +27,26 @@ build/
 .env*.local
 !.env.example
 
-# Documentation (except README)
-*.md
-!README.md
+# Security - CRITICAL (never commit keys)
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Assignment deliverables (stored in docs/)
+*.docx
+*.pptx
+
+# Executables and binaries
+*.exe
+*.dll
+copilot/
+
+# Generated scripts
+generate_*.py
+
+# Terraform (abandoned approach)
+terraform*/
 
 # OS-specific files
 .DS_Store
