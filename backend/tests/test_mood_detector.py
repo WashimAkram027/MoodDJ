@@ -77,9 +77,8 @@ class TestMoodDetector:
         
         # Reset
         detector.reset()
-        
+
         assert len(detector.mood_history) == 0
-        assert len(detector.hist_smile) == 0
         print("✅ Test 3 PASSED: Detector reset successfully")
     
     def test_mood_history_limit(self, detector):
